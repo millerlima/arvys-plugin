@@ -30,7 +30,7 @@ testado para outros runtimes de agente.
 ## Instalar
 
 ```
-claude plugin marketplace add <url-git-ou-caminho-deste-repo>
+claude plugin marketplace add https://github.com/millerlima/arvys-plugin
 claude plugin install arvys@arvys
 ```
 
