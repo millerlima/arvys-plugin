@@ -146,16 +146,49 @@ mensagem que o dono lê tem de conter, nesta ordem, sempre:
    palavra **ADOÇÃO** (projeto em andamento); em escritório já montado, os
    agentes que já existem, pelo nome. Citar o nome dentro de um caminho de
    arquivo **não** conta como anúncio — tem de ser dito em texto ao dono.
-3. **A próxima pergunta — uma só.**
+3. **O painel, uma linha só, com o comando** (achado 2026-09-13: o dono
+   perguntou "em que momento ele fala do QG?" e a resposta era "nunca" —
+   épicos, stories e tasks só viram visíveis ali, e ninguém contava isso).
+   Só quando `company/STATE.md` nasce nesta resposta (item 1 não-vazio):
+   `node hub/serve.js` abre o painel local — Quadro, Panorama de Épicos,
+   Fila. Escritório já montado: pule, o dono já sabe.
+4. **A próxima pergunta — uma só.**
 
 Terminar só com a pergunta da trilha seguinte é falha: sem o nome da trilha
 e do que foi gravado, o dono não sabe onde está nem o que aconteceu.
 
-**Confira os 3 antes de enviar.** O item 1 é o mais fácil de inchar e o
+**Confira os 4 antes de enviar.** O item 1 é o mais fácil de inchar e o
 item 2 o mais fácil de perder: uma lista de arquivos criados **não**
 substitui o nome da trilha. Se a mensagem não tem, em texto corrido,
 `/arvys:genesis` **ou** a palavra ADOÇÃO (ou os agentes existentes, pelo
-nome), ela ainda não está pronta para ser enviada.
+nome), ela ainda não está pronta para ser enviada. O item 3 é o mais fácil
+de esquecer por não ter "dono" — ninguém pede para ele entrar, ele só faz falta depois.
+
+### A forma do fecho, quando algo foi criado (retro, achado 2026-09-13)
+
+Os itens 1, 2 e 3 (arquivos + painel + trilha) vão dentro de **uma moldura
+de texto simples** — só caracteres de linha (─), sem cor, sem emoji —
+separando visualmente "o que nasceu" da pergunta que vem depois. Mesmo
+conteúdo de sempre, só reforça a analogia do escritório em vez de uma lista
+solta. **Só usa a moldura quando pelo menos 1 arquivo foi criado nesta
+resposta** — nas mensagens intermediárias (só a Pergunta 1, ou só a
+Pergunta 2, ainda sem gravar nada), segue texto corrido normal, sem moldura
+vazia.
+
+```
+── seu escritório nasceu ──────────────────────────
+  OWNER.md              perfil: <vibecoder|dev|híbrido>, coach <ligado|desligado>
+  company/STATE.md      vazio — ninguém contratado ainda
+  company/DECISIONS.md  vazio — a 1ª decisão é sua
+
+  painel (épicos, stories, tasks): node hub/serve.js
+  trilha: <ADOÇÃO (projeto em andamento) | /arvys:genesis (produto novo)>
+────────────────────────────────────────────────────
+```
+
+Depois da moldura, a próxima pergunta em texto corrido (item 3), como
+sempre. Em escritório **já montado** (Passo 0, `company/STATE.md` presente)
+não há o que criar — segue sem moldura, só situando e roteando.
 
 ## Regras
 
