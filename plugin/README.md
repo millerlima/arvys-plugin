@@ -2,9 +2,12 @@
 
 Onze rituais (`/arvys:<x>`), dois subagentes (`explorer`, `reviewer`) e o
 contrato de worker. É o **núcleo** do método Arvys: o que viaja igual para
-todo projeto. O que nasce em cada projeto (`company/`, workers implementados,
-painel) é criado pelo `/arvys:start`; os agentes em `agents/` nascem pelo
-`/arvys:hire`, não por este pacote.
+todo projeto. `/arvys:start` cria só **2 arquivos** (`company/STATE.md`,
+`company/DECISIONS.md`) — de propósito: pasta morta é pior que pasta
+ausente, e cada ritual sabe lidar com o resto ausente. O que falta depois é
+manual, por design: os workers (`workers/README.md` — rodar uma vez e
+registrar no Agendador do Windows) e o painel (`node hub/serve.js`). Os
+agentes em `agents/` nascem pelo `/arvys:hire`, um de cada vez.
 
 | Ritual | Para quê |
 |---|---|
