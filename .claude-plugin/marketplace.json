@@ -1,0 +1,15 @@
+{
+  "name": "arvys",
+  "owner": { "name": "millerlima" },
+  "metadata": {
+    "description": "Marketplace do escritório virtual Arvys — um único plugin: arvys"
+  },
+  "plugins": [
+    {
+      "name": "arvys",
+      "source": "./plugin",
+      "description": "Escritório virtual: rituais, subagentes e contrato de worker",
+      "version": "0.18.0"
+    }
+  ]
+}

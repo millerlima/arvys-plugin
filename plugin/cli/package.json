@@ -1,0 +1,14 @@
+{
+  "name": "arvys",
+  "version": "0.13.0",
+  "description": "O CLI do Arvys — leva o seu escritorio para a nuvem, e so o que voce mandou levar.",
+  "type": "module",
+  "bin": {
+    "arvys": "./arvys.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "private": true,
+  "license": "MIT"
+}

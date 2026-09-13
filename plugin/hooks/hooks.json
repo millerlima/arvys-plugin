@@ -1,0 +1,128 @@
+{
+  "description": "Recusa leitura via shell (cat/type/Get-Content/gc) de agents/** e company/** — decisão 'A tela do ritual é parte da entrega' (2026-09-03). Recusa restauração via git de agents/**, company/** e specs/** (P6 do fpy-molde). Recusa escrita de linha com autoria `(dono …)` em agents/*/FEEDBACK.md por ferramenta — autoria do dono só pelo QG (FILA 43, risco 2). Audita o CONTEUDO de agents/*/FEEDBACK.md apos a escrita (PostToolUse) e denuncia autoria `(dono ·)` forjada — inspecao de texto-fonte nao resiste a ofuscacao (risco-10b do reviewer). Recusa `kill`/`taskkill`/`Stop-Process` contra PID que a sessao nao declarou ter subido em hub/live/meus-pids.txt, e recusa sempre matar por NOME — retro de 2026-09-06, feedback ratificado como hook pelo dono (incidents/2026-09-06-node-alheio-derrubado-na-porta-de-teste.md). Recusa gravar texto via shell (heredoc, node -e, python -c, echo >) com barra invertida+letra ou crase, salvo `escape-ok: <motivo>` — retro 5 de 2026-09-12, gotcha 47/49 violado 5x em 6 dias. Recusa ferramenta de infra com efeito colateral (mcp__neon__* de escrita, run_sql destrutivo, deleteMany/prisma db push/DROP/TRUNCATE no shell) sem linha-antes-de-chamar com `confirmo` em hub/live/infra-ok.txt — retro 5, incidentes de 2026-09-09 (executor apagou dados) e 2026-09-12 (restore_snapshot trocou a main de producao). Coach de prompt (UserPromptSubmit): em pedido vago ou multiassunto, injeta contexto para o orquestrador atender E mostrar o pedido reescrito em 4 campos — no maximo 1 por sessao, adaptado ao Perfil, desligavel com `Coach de prompt: desligado` no OWNER.md, exit 0 sempre — retro 6 / FILA 2 (specs/2026-09-biblioteca).",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/hooks/no-shell-read.js"
+            ],
+            "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "node",
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/hooks/no-git-restore.js"
+            ],
+            "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "node",
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/hooks/no-feedback-como-dono.js"
+            ],
+            "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "node",
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/hooks/no-kill-alheio.js"
+            ],
+            "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "node",
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/hooks/no-escape-em-shell.js"
+            ],
+            "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "node",
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/hooks/no-infra-prod-sem-linha.js"
+            ],
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "mcp__neon__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/hooks/no-infra-prod-sem-linha.js"
+            ],
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/hooks/no-feedback-como-dono.js"
+            ],
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/hooks/sintaxe-pos-edit.js"
+            ],
+            "timeout": 6
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit|NotebookEdit|Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/hooks/feedback-autoria-auditor.js"
+            ],
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/hooks/coach-de-prompt.js"
+            ],
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}

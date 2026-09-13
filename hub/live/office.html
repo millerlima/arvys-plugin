@@ -1,0 +1,1668 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>ARVYS · QG ao vivo</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  /* D2 (review T8) — critério 7 da spec: NADA sai da máquina. Aqui moravam dois
+     <link> para fonts.googleapis.com; com a internet desligada eles falhavam
+     (1 ERR_INTERNET_DISCONNECTED por carga do /live) e, com internet, o QG
+     contava ao Google toda vez que o dono abria o escritório.
+
+     Em vez de reescrever os ~40 `font-family` do arquivo (o visual pixel-art
+     já foi aprovado pelo dono e não se mexe nele), as três famílias passam a
+     resolver por fontes JÁ INSTALADAS na máquina, via `local()`: zero rede,
+     zero download, e o `font-family="Bricolage Grotesque"` do SVG (linha ~447,
+     o único sem pilha de fallback) continua caindo em pé.
+     Nenhum peso é baixado: onde a fonte local não tem o peso 700/800, o
+     navegador engrossa sozinho — é a mesma queda que já acontecia offline. */
+  @font-face{font-family:'Bricolage Grotesque';font-style:normal;font-weight:100 550;
+    src:local('Segoe UI Semibold'),local('Segoe UI'),local('Helvetica Neue'),local('Arial'),local('DejaVu Sans');}
+  /* a Bricolage aparece quase sempre em 700/800 (marca, h1, nome do agente):
+     essa faixa vai direto na face negrito do sistema, sem engrossar sintético. */
+  @font-face{font-family:'Bricolage Grotesque';font-style:normal;font-weight:551 1000;
+    src:local('Segoe UI Bold'),local('Segoe UI Semibold'),local('Helvetica Neue Bold'),local('Arial Bold'),local('DejaVu Sans Bold');}
+  @font-face{font-family:'Schibsted Grotesk';font-style:normal;
+    src:local('Segoe UI'),local('Helvetica Neue'),local('Arial'),local('DejaVu Sans');}
+  @font-face{font-family:'IBM Plex Mono';font-style:normal;
+    src:local('Cascadia Mono'),local('Consolas'),local('Menlo'),local('DejaVu Sans Mono'),local('Courier New');}
+</style>
+<style>
+  /* ---- tokens: os mesmos do hub/mockup ---- */
+  :root{
+    --bg:#FAFAF7; --surface:#FFFFFF; --ink:#1A1B1E; --ink-2:#52534E; --ink-3:#8B8C85;
+    --line:#E4E2DA; --brass:#8A6D1D; --brass-soft:#F4EEDC;
+    --on-pill:#FFFFFF; --terminal:#F4F3EE; --danger:#B02A2A;
+    --side:#F3F2EC; --ok:#2F9E44; --wait:#D9770B; --idle:#A5A69F;
+    /* sala (onda 5.1) */
+    --floor:#EDE8DE; --floor-work:#E7DFCE; --floor-meet:#DCE4DA; --floor-lounge:#D6E7D5;
+    --floor-recep:#E3DAEC; --floor-annex:#E2DED2;
+    --wall:#D8D3C6; --wall-2:#BDB6A5; --glass:#BFDCEA;
+    --furn:#C99C6C; --furn-2:#9C7248; --screen:#3A3D44; --plant:#4E8A52; --plant-2:#2F6A3B;
+    --cork:#D7B183; --shadow:#1A1B1E; --plate:#FFFFFF;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#17181B; --surface:#1F2126; --ink:#E9E7E2; --ink-2:#A9AAA2; --ink-3:#6E6F68;
+      --line:#33352C; --brass:#CBA842; --brass-soft:#2A2718;
+      --terminal:#14151A; --danger:#E06A6A;
+      --side:#131417; --ok:#51CF66; --wait:#F5A623; --idle:#5C5D57;
+    --floor:#202228; --floor-work:#262930; --floor-meet:#242A2A; --floor-lounge:#232F28;
+    --floor-recep:#2A2733; --floor-annex:#1F2126;
+    --wall:#33363E; --wall-2:#454A54; --glass:#2E5266;
+    --furn:#8A6544; --furn-2:#5E4229; --screen:#0E1013; --plant:#3E7A4A; --plant-2:#2A5A34;
+    --cork:#6E5636; --shadow:#000000; --plate:#363A44;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#17181B; --surface:#1F2126; --ink:#E9E7E2; --ink-2:#A9AAA2; --ink-3:#6E6F68;
+    --line:#33352C; --brass:#CBA842; --brass-soft:#2A2718;
+    --terminal:#14151A; --danger:#E06A6A;
+    --side:#131417; --ok:#51CF66; --wait:#F5A623; --idle:#5C5D57;
+    --floor:#202228; --floor-work:#262930; --floor-meet:#242A2A; --floor-lounge:#232F28;
+    --floor-recep:#2A2733; --floor-annex:#1F2126;
+    --wall:#33363E; --wall-2:#454A54; --glass:#2E5266;
+    --furn:#8A6544; --furn-2:#5E4229; --screen:#0E1013; --plant:#3E7A4A; --plant-2:#2A5A34;
+    --cork:#6E5636; --shadow:#000000; --plate:#363A44;
+  }
+
+  *{box-sizing:border-box}
+  body{margin:0; background:var(--bg); color:var(--ink);
+       font-family:'Schibsted Grotesk',system-ui,sans-serif; font-size:15px; line-height:1.55}
+  a{color:var(--brass); text-underline-offset:3px}
+  :focus-visible{outline:2px solid var(--brass); outline-offset:2px; border-radius:4px}
+  .mono{font-family:'IBM Plex Mono',ui-monospace,monospace; font-size:.86em}
+  [hidden]{display:none!important}
+
+  .top{position:sticky; top:0; z-index:5; display:flex; align-items:baseline; gap:14px; flex-wrap:wrap;
+       padding:14px 24px; background:var(--bg); border-bottom:1px solid var(--line)}
+  .brand{font-family:'Bricolage Grotesque',sans-serif; font-weight:800; font-size:22px; letter-spacing:.5px}
+  .brand small{color:var(--brass); font-weight:700}
+  .top .back{font-size:13px; color:var(--ink-3); text-decoration:none}
+  .top .back:hover{color:var(--brass)}
+  .top .status{margin-left:auto; color:var(--ink-3); font-size:12.5px; display:inline-flex; gap:8px; align-items:center}
+  .top .status .sem{width:8px; height:8px}
+  .top button{font:inherit; font-size:12px; color:var(--ink-2); background:var(--surface); border:1px solid var(--line);
+              border-radius:99px; padding:3px 10px; cursor:pointer}
+  .top button:hover{border-color:var(--brass); color:var(--brass)}
+
+  main{padding:22px 24px 48px; max-width:1180px; margin:0 auto; min-width:0}
+  h1{font-family:'Bricolage Grotesque',sans-serif; font-size:26px; font-weight:800; margin:0 0 4px; letter-spacing:-.01em}
+  .lead{margin:0 0 14px; color:var(--ink-2); max-width:70ch}
+  .fonte{margin-top:26px; padding-top:12px; border-top:1px dashed var(--line); color:var(--ink-3); font-size:12px}
+  .fonte .mono{color:var(--ink-2)}
+
+  /* semáforo */
+  .sem{display:inline-block; width:9px; height:9px; border-radius:50%; background:var(--idle); flex:none}
+  .sem.on{background:var(--ok); box-shadow:0 0 0 3px color-mix(in srgb,var(--ok) 22%,transparent)}
+  .sem.wait{background:var(--wait); box-shadow:0 0 0 3px color-mix(in srgb,var(--wait) 22%,transparent)}
+  .sem.bad{background:var(--danger); box-shadow:0 0 0 3px color-mix(in srgb,var(--danger) 22%,transparent)}
+  .legend{display:flex; gap:18px; flex-wrap:wrap; font-size:12.5px; color:var(--ink-2); margin:0 0 14px; align-items:center}
+  .legend span{display:inline-flex; gap:7px; align-items:center}
+  .legend .hint{color:var(--ink-3); font-size:11.5px}
+
+  /* ---- sala em PIXEL-ART (spec 2026-09-pixel-art, onda 2) ----
+     Cenário = tiles de 16 px (CC0 MetroCity, hub/live/tiles/) desenhados em coordenadas de ARTE
+     dentro de <g id="px-scene" transform="scale(2)">: 1 px de arte = 2 unidades do viewBox.
+     Sprites = 32 px de arte → 64 unidades (escala mínima 2×, decisão do gate da onda 1, R7).
+     A planta é servida a 1000 px de largura (1 unidade = 1 px de tela) para o pixel sair inteiro;
+     em tela estreita ela encolhe (fallback), nunca cresce fracionário. Mesas, placas e painéis de
+     dado ficam em coordenadas da cena (texto nítido), só os tiles passam pelo scale(2). */
+  .plan-wrap{position:relative; background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:10px; overflow:hidden}
+  .plan{width:1000px; max-width:100%; height:auto; display:block; margin:0 auto; font-family:'Schibsted Grotesk',system-ui,sans-serif; image-rendering:pixelated}
+  .plan image{image-rendering:pixelated}
+  .plan .px{shape-rendering:crispEdges}
+  .plan .floor{fill:var(--floor)}
+  /* tema escuro: o CENÁRIO escurece (px-scene + px-front), as pessoas não (lente tema-escuro, onda 1);
+     a face de parede branca (.wl) dá lugar à azul-marinho (.wd) */
+  .plan .wd{display:none}
+  /* P8 (polimento): a folha CC0 só tem madeira escura — no tema claro o cenário clareia por filtro (o escuro já
+     escurece por filtro, .68). Só cenário e móveis; figuras, balões e painéis ficam fora, como no escuro. */
+  .plan .px-scene, .plan .px-front{filter:brightness(1.16) saturate(.86)}
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]) .plan .px-scene, :root:not([data-theme="light"]) .plan .px-front{filter:brightness(.68) saturate(.9)}
+    :root:not([data-theme="light"]) .plan .wl{display:none}
+    :root:not([data-theme="light"]) .plan .wd{display:inline}
+  }
+  :root[data-theme="dark"] .plan .px-scene, :root[data-theme="dark"] .plan .px-front{filter:brightness(.68) saturate(.9)}
+  :root[data-theme="dark"] .plan .wl{display:none}
+  :root[data-theme="dark"] .plan .wd{display:inline}
+  :root[data-theme="light"] .plan .wd{display:none}
+  :root[data-theme="light"] .plan .wl{display:inline}
+
+  .plan .rlabel{font-size:11px; letter-spacing:.09em; text-transform:uppercase; fill:var(--ink-3); font-weight:600}
+  /* placa de madeira (arte nossa, coordenadas de arte): texto de 6 px vira 12 na tela */
+  .plan text.plate{font:700 6px/1 ui-monospace,Consolas,monospace; fill:#3B2A12; text-anchor:middle; letter-spacing:.02em}
+  .plan .glow{fill:var(--agent); opacity:.45}
+  .plan .vapor{fill:none; stroke:var(--ink-3); stroke-width:1; stroke-linecap:round; opacity:0}
+
+  /* painéis de dado (balcão · mural · relógio · troféus): quadro de pixel — placa --plate com borda 2 px */
+  .plan .panel{fill:var(--plate); stroke:var(--ink); stroke-width:2; shape-rendering:crispEdges}
+  /* FILA 39: cartões do mural do RH (papel pregado na cortiça; sem animação — 0 novas, R1 da onda 3) */
+  .plan .rh-pin{fill:var(--brass); shape-rendering:crispEdges}
+  .plan .rh-name{font-family:'Bricolage Grotesque',sans-serif; font-weight:800; font-size:12px; fill:var(--ink)}
+  .plan .rh-sum{font-family:'Schibsted Grotesk',system-ui,sans-serif; font-size:9.5px; font-weight:600; fill:var(--ink-2)}
+  .plan .rh-sum.nd{fill:var(--ink-3); font-style:italic}
+  .plan .rh-badge rect{fill:var(--brass); stroke:var(--ink); stroke-width:2; shape-rendering:crispEdges}
+  .plan .rh-badge text{font-family:'IBM Plex Mono',monospace; font-size:9.5px; font-weight:700; fill:var(--on-pill); text-anchor:middle}
+  .plan .rh-hint{font-size:9px; fill:var(--ink-3); font-style:italic}
+  .plan .rh-card{cursor:pointer}
+  .plan .rh-card.sel .rh-paper{stroke:var(--brass); stroke-width:3}
+  .side .bol{font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:var(--ink-2); line-height:1.45}
+  .side .bol div{margin:0 0 5px}
+  .side .bol b{color:var(--ink); font-weight:600}
+  .side .bol .nd{color:var(--ink-3); font-style:italic}
+  .side .bol .src{display:block; color:var(--ink-3); font-size:9.5px; word-break:break-all}
+  /* área pontilhada (VAGA · sessão sem /arvys:open) */
+  .plan .spot{fill:none; stroke:var(--ink-3); stroke-width:2; stroke-dasharray:4 4; shape-rendering:crispEdges}
+
+  /* estação: aro que acende na cor do agente */
+  .plan .desk{fill:none; stroke:transparent; stroke-width:2; shape-rendering:crispEdges; transition:stroke .3s}
+  .plan .desk.on{stroke:var(--agent)}
+  .plan text.task{font-size:10.5px; fill:var(--ink-2); paint-order:stroke; stroke:var(--surface); stroke-width:3px; stroke-linejoin:round}   /* halo: o bilhete fica sobre madeira, não sobre placa */
+  .fo{font-family:'Schibsted Grotesk',system-ui,sans-serif; color:var(--ink); font-size:13px; line-height:1.4; height:100%}
+  .fo .name{display:flex; align-items:center; gap:8px; margin-bottom:4px}
+  .fo .name b{font-family:'Bricolage Grotesque',sans-serif; font-weight:800; font-size:15px}
+  .fo .name .call{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink); position:relative; padding-left:11px}
+  .fo .name .call::before{content:''; position:absolute; left:0; top:50%; transform:translateY(-50%); width:6px; height:6px; border-radius:50%; background:var(--agent, var(--brass))}
+  .fo .task{font-size:12px; color:var(--ink-2); display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; min-height:17px}
+  .fo .task:empty::before{content:"—"; color:var(--ink-3)}
+  .fo .state{margin-left:auto; display:inline-flex}
+  .fo .big{font-family:'Bricolage Grotesque',sans-serif; font-weight:800; font-size:30px; line-height:1; color:var(--ink)}
+  .fo .big.zero{color:var(--ink-3)}
+  .fo .sub{font-size:12px; color:var(--ink-2)}
+  .fo .lbl{font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-3); font-weight:600; margin-bottom:4px}
+  .fo .quote{font-size:12.5px; color:var(--ink); font-weight:600; line-height:1.35}
+  .fo .who{font-size:11px; color:var(--ink-3); margin-top:4px}
+  .fo .list{font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:var(--ink-2); line-height:1.45; white-space:pre; overflow:hidden; text-overflow:ellipsis}
+  /* placar da área de descanso: troféus e XP lado a lado (o quadro de pixel é largo e baixo) */
+  /* FILA 40: placar de fliperama (tela escura nos dois temas) e barra de XP sob a plaquinha da mesa */
+  .placar text{font-family:'IBM Plex Mono',monospace; font-weight:700; fill:#E9E7E2}
+  .placar{cursor:pointer}
+  .placar:hover rect:first-child{fill:#5A5A5A}
+  .placar rect, .xpbar rect{shape-rendering:crispEdges}
+  .fo .big.clock{font-size:22px}
+  /* plaquinha de nome da estação: placa de pixel na parede (--plate, borda 2 px, sombra dura) */
+  .fo.plaque{display:flex; flex-direction:column; justify-content:center; height:100%;
+             background:var(--plate); border:2px solid var(--ink); border-radius:0; padding:3px 8px;
+             box-shadow:2px 2px 0 color-mix(in srgb,var(--ink) 25%,transparent)}
+  .fo.plaque .name{margin-bottom:0; white-space:nowrap; overflow:hidden}   /* P4: nunca quebra em 2 linhas (vibe-marketing vazava) */
+  .fo.plaque .name .call{font-size:10px}
+  .fo.plaque .name b{font-size:13px}
+  .fo.plaque .task{font-size:11px; -webkit-line-clamp:1; min-height:15px}
+
+  /* ---- figuras (motor de cena) ---- */
+  /* deslocamento: place() anda trecho a trecho (porta a porta) e põe a duração de cada trecho inline */
+  .fig, .bubh{transition:transform .6s linear; will-change:transform}   /* .bubh: porta-balão em #bubs, mesma transform da figura */
+  .fig .spr{transition:none}
+  /* os quadros do pack olham para a direita; andar para a esquerda = espelho. O crachá fica FORA do
+     espelho (emoji espelhado vira outro emoji). O sprite é centrado na origem da figura, então
+     scaleX(-1) espelha no lugar sem transform-origin. */
+  .fig.left .spr{transform:scaleX(-1)}
+  .fig svg{color:var(--ink); overflow:visible}
+  #sprite symbol{overflow:visible}
+  .fig .doc{display:none}
+  .fig.doc .doc{display:block}
+  .fig .doc rect{fill:var(--plate); stroke:var(--brass); stroke-width:2; shape-rendering:crispEdges}
+  .fig .doc path{stroke:var(--brass); stroke-width:2; fill:none; shape-rendering:crispEdges}
+  .bubh .tag{font-family:'IBM Plex Mono',monospace; font-size:9.5px; fill:var(--ink-2); paint-order:stroke; stroke:var(--surface); stroke-width:3px; stroke-linejoin:round}
+  /* crachá do genérico (decisão do gate, onda 1): placa --plate 28×22 com borda na cor CRUA do agente, emoji 16 px centrado */
+  .fig .badge rect{shape-rendering:crispEdges}
+  .fig .fig-emoji{font-size:16px; text-anchor:middle; dominant-baseline:central}
+  /* ciclo de andar: 6 quadros da folha (cols 18-23) trocados por steps(); pele/cabelo escolhem a LINHA por translateY.
+     Só roda enquanto --walk:running (place() liga durante o trecho e desliga na chegada — parado em pé não marcha). */
+  #px-body-w image{animation:walk-skin .6s steps(6) infinite; animation-play-state:var(--walk,paused)}
+  #px-hair-w image{animation:walk-hair .6s steps(6) infinite; animation-play-state:var(--walk,paused)}
+  #px-outfit-w image{animation:walk-flat .6s steps(6) infinite; animation-play-state:var(--walk,paused)}
+  @keyframes walk-skin{from{transform:translate(0,calc(var(--skin,0) * -32px))}to{transform:translate(-192px,calc(var(--skin,0) * -32px))}}
+  @keyframes walk-hair{from{transform:translate(0,calc(var(--hair,7) * -32px))}to{transform:translate(-192px,calc(var(--hair,7) * -32px))}}
+  @keyframes walk-flat{from{transform:translate(0,0)}to{transform:translate(-192px,0)}}
+  /* R1: com a preferência ligada NADA anima — nem deslize, nem troca de quadro (REDUCED no motor também pula o walk) */
+  @media (prefers-reduced-motion: reduce){
+    .fig, .bubh, .plan .desk{transition:none}   /* .desk: aro da mesa (stroke .3s) escapava — D2 do reviewer da onda 3 */
+    #px-body-w image, #px-hair-w image, #px-outfit-w image{animation:none}
+  }
+
+  /* ---- onda 5.2: microanimações de cenário (mantidas em pixel) ----
+     Regra: enfeite NUNCA compete com sinal que significa algo (semáforo, balão,
+     alerta de bloqueado). Tudo lento, de baixa amplitude, sem cor de estado.
+     Desliga inteiro em prefers-reduced-motion. */
+  .plan .vapor.v1{animation:vapor 3.4s ease-in-out infinite}
+  .plan .vapor.v2{animation:vapor 3.4s ease-in-out 1.7s infinite}
+  @keyframes vapor{
+    0%{opacity:0; transform:translateY(2px) scaleY(.6)}
+    35%{opacity:.5}
+    100%{opacity:0; transform:translateY(-6px) scaleY(1.2)}
+  }
+  /* monitor da estação ATIVA respira; mesa parada fica quieta (o brilho segue significando trabalho) */
+  .plan [data-desk-front] .glow{transition:opacity .4s}
+  .plan [data-desk-front].on .glow{animation:respira 2.8s ease-in-out infinite}
+  @keyframes respira{0%,100%{opacity:.42}50%{opacity:.68}}
+  /* fliperama: os 3 botões acendem em revezamento */
+  .plan .arcade rect{animation:arcade 2.1s steps(1) infinite}
+  .plan .arcade rect:nth-of-type(2){animation-delay:.7s}
+  .plan .arcade rect:nth-of-type(3){animation-delay:1.4s}
+  @keyframes arcade{0%,33%{opacity:1}34%,100%{opacity:.32}}
+  /* P9: bola quica em passos de pixel, raquete a segue */
+  .plan .arcade-game .ball{animation:arc-ball 2.4s steps(6) infinite}
+  .plan .arcade-game .pad{animation:arc-pad 2.4s steps(6) infinite}
+  @keyframes arc-ball{0%{transform:translate(0,0)}25%{transform:translate(10px,5px)}50%{transform:translate(4px,0)}75%{transform:translate(-2px,5px)}100%{transform:translate(0,0)}}
+  @keyframes arc-pad{0%{transform:translate(0,0)}25%{transform:translate(9px,0)}50%{transform:translate(3px,0)}75%{transform:translate(-3px,0)}100%{transform:translate(0,0)}}
+  @media (prefers-reduced-motion: reduce){
+    /* .vapor.v1/.v2 precisam aparecer aqui com a MESMA especificidade da regra que anima — só ".plan .vapor"
+       perdia a disputa e o vapor seguia animando (achado do sensor O2.4, 2026-09-05; vinha desde a 5.2) */
+    .plan .vapor, .plan .vapor.v1, .plan .vapor.v2, .plan [data-desk-front].on .glow, .plan .arcade rect, .plan .arcade-game .ball, .plan .arcade-game .pad{animation:none}
+    .plan .vapor{opacity:.35}
+  }
+
+  /* ---- balão de fala (B2) ---- */
+  .plan .bub{transition:opacity .25s}
+  .plan .bub rect, .plan .bub .tip{fill:var(--surface); stroke:var(--line); stroke-width:1}
+  .plan .bub text{font-size:10px; fill:var(--ink); font-weight:500}
+  .plan .bub.bad rect, .plan .bub.bad .tip{stroke:var(--danger)}
+  .plan .bub.bad text{fill:var(--danger)}
+  .plan .bub.wait rect, .plan .bub.wait .tip{stroke:var(--wait)}
+  @media (prefers-reduced-motion: reduce){ .plan .bub{transition:none} }
+
+  /* ---- painel lateral (B3) ---- */
+  .fig, .plan [data-desk], .plan [data-desk-front]{cursor:pointer}
+  .bubh, .bub{pointer-events:none}
+  .plan [data-desk].sel .desk{stroke:var(--agent); stroke-width:3.5}
+  .side{position:absolute; top:12px; right:12px; width:238px; max-height:calc(100% - 24px); overflow:auto; z-index:4;
+        background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:14px 16px 16px;
+        box-shadow:0 14px 34px color-mix(in srgb,var(--ink) 18%,transparent)}
+  .side .x{position:absolute; top:8px; right:8px; font:inherit; font-size:13px; line-height:1; color:var(--ink-3);
+           background:none; border:0; cursor:pointer; padding:4px 6px; border-radius:6px}
+  .side .x:hover{color:var(--danger); background:var(--terminal)}
+  .side .hd{display:flex; align-items:baseline; gap:8px; padding-right:20px}
+  .side .hd b{font-family:'Bricolage Grotesque',sans-serif; font-weight:800; font-size:17px}
+  .side .call{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--agent,var(--brass))}
+  .side .st{display:flex; align-items:center; gap:7px; margin:6px 0 2px; font-size:13px; color:var(--ink)}
+  .side .lbl{font-size:10.5px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-3); font-weight:600; margin:12px 0 3px}
+  .side .mono{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink-2); word-break:break-all}
+  .side .list{font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:var(--ink-2); line-height:1.5; white-space:pre-wrap}
+
+  /* ---- onda 5.3: caixa de recado ---- */
+  .side .recado{margin-top:14px; padding-top:12px; border-top:1px solid var(--line)}
+  .side .recado .n{display:inline-block; margin-left:6px; padding:1px 6px; border-radius:99px;
+                   background:var(--wait); color:#1A1B1E; font-size:10px; font-weight:700; letter-spacing:0}
+  .side textarea{width:100%; box-sizing:border-box; font:inherit; font-size:12.5px; line-height:1.45;
+                 color:var(--ink); background:var(--terminal); border:1px solid var(--line);
+                 border-radius:8px; padding:8px 9px; resize:vertical; min-height:52px}
+  .side textarea:focus{outline:2px solid var(--agent,var(--brass)); outline-offset:1px}
+  .side textarea:disabled{opacity:.5; cursor:not-allowed}
+  .side .row{display:flex; align-items:center; gap:8px; margin-top:7px}
+  .side .cont{font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:var(--ink-3)}
+  .side .row button{margin-left:auto; font:inherit; font-size:12px; font-weight:600; cursor:pointer;
+                    color:var(--on-pill); background:var(--agent,var(--brass)); border:0;
+                    border-radius:99px; padding:5px 14px}
+  .side .row button:disabled{opacity:.45; cursor:not-allowed}
+  .side .nota{margin:8px 0 0; font-size:11px; line-height:1.4; color:var(--ink-3)}
+  .side .nota.erro{color:var(--danger); font-weight:600}
+  .side .nota.ok{color:var(--ok); font-weight:600}
+  /* selo de recado esperando, no avatar. Forma e canto proprios: nao compete com
+     o aro de bloqueado (circulo vermelho) nem com o semaforo da mesa. */
+  .fig .selo{display:none}
+  .fig.tem-recado .selo{display:block}
+  .fig .selo rect{fill:var(--wait); stroke:var(--surface); stroke-width:1.5}
+  .fig .selo path{stroke:#1A1B1E; stroke-width:1.4; fill:none}
+
+  /* ---- sem servidor ---- */
+  .offline{position:absolute; inset:0; display:grid; place-items:center; background:color-mix(in srgb,var(--bg) 82%,transparent); backdrop-filter:blur(2px); z-index:3; padding:16px}
+  .offline .panel{background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:20px 24px; max-width:460px; box-shadow:0 12px 32px color-mix(in srgb,var(--ink) 12%,transparent)}
+  .offline h2{margin:0 0 6px; font-family:'Bricolage Grotesque',sans-serif; font-size:18px}
+  .offline p{margin:0 0 10px; color:var(--ink-2); font-size:13.5px}
+  .offline code{display:block; font-family:'IBM Plex Mono',monospace; font-size:13px; background:var(--terminal); border:1px solid var(--line); border-radius:8px; padding:10px 12px; color:var(--ink); margin:6px 0; overflow-x:auto}
+
+  @media(max-width:860px){ .top{padding:12px 16px} main{padding:16px 12px 40px} .lead{font-size:14px} }
+</style>
+</head>
+<body>
+
+<!-- sprites em PIXEL-ART (spec 2026-09-pixel-art, onda 2). Fonte: folhas CC0 de JIK-A-4 / MetroCity em
+     hub/live/tiles/ (origem e sha256 em hub/live/CREDITOS.md), recortadas por viewBox — nenhum arquivo de arte
+     com nome de agente. Genérico e clássicos nascem das MESMAS camadas (sombra + corpo + roupa branca tingida
+     por --agent + cabelo); o clássico só fixa --skin/--hair e ganha um acessório de 1 px. Cabelo NUNCA é
+     tingido (lente fábrica, onda 1). Os ids av-<kind>-sit|walk|blocked são o contrato do motor (place/fig).
+     O avatars.svg vetorial foi aposentado nesta onda: a fonte única passa a ser este bloco. -->
+<div id="sprite" aria-hidden="true">
+<svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" style="position:absolute">
+<defs>
+  <!-- corpo e cabelo: a folha inteira entra no recorte e --skin (0-5) / --hair (0-7) escolhem a LINHA por translateY.
+       Linhas do corpo: 0 claro · 1 pálido · 2 dourado · 3 moreno-escuro · 4 pálido-2 · 5 moreno.
+       Linhas do cabelo: 0 castanho · 1 branco · 2 ruivo · 3 laranja · 4 acaju · 5 loiro · 6 preto (Forge) · 7 boné cinza.
+       Colunas: 0 = frente parado · 18-23 = andando para a direita (6 quadros; o ciclo é a animação walk-* do CSS,
+       que só roda com --walk:running e morre em prefers-reduced-motion). Roupa (Outfit1) tem 1 linha só. -->
+  <svg id="px-body-f" viewBox="0 0 32 32"   width="32" height="32"><image href="/live/tiles/char-body.png" width="768" height="192" style="transform:translateY(calc(var(--skin,0) * -32px))"/></svg>
+  <svg id="px-body-w" viewBox="576 0 32 32" width="32" height="32"><image href="/live/tiles/char-body.png" width="768" height="192" style="transform:translateY(calc(var(--skin,0) * -32px))"/></svg>
+  <svg id="px-hair-f" viewBox="0 0 32 32"   width="32" height="32"><image href="/live/tiles/char-hair.png" width="768" height="256" style="transform:translateY(calc(var(--hair,7) * -32px))"/></svg>
+  <svg id="px-hair-w" viewBox="576 0 32 32" width="32" height="32"><image href="/live/tiles/char-hair.png" width="768" height="256" style="transform:translateY(calc(var(--hair,7) * -32px))"/></svg>
+  <svg id="px-outfit-f" viewBox="0 0 32 32"   width="32" height="32"><image href="/live/tiles/char-outfit.png" width="768" height="32"/></svg>
+  <svg id="px-outfit-w" viewBox="576 0 32 32" width="32" height="32"><image href="/live/tiles/char-outfit.png" width="768" height="32"/></svg>
+  <svg id="px-shadow" viewBox="0 0 32 32" width="32" height="32"><image href="/live/tiles/char-shadow.png" width="32" height="32"/></svg>
+
+  <mask id="mk-outfit-f" style="mask-type:alpha" maskUnits="userSpaceOnUse" x="0" y="0" width="32" height="32"><use href="#px-outfit-f"/></mask>
+  <mask id="mk-outfit-w" style="mask-type:alpha" maskUnits="userSpaceOnUse" x="0" y="0" width="32" height="32"><use href="#px-outfit-w"/></mask>
+  <!-- tinta: cor do agente (luminosidade clampada em [30%,72%] pelo fig()) sob a peça branca + a peça em multiply
+       (mantém o sombreado do pixel). -->
+  <g id="tint-outfit-f"><rect width="32" height="32" fill="var(--agent)" mask="url(#mk-outfit-f)"/><use href="#px-outfit-f" style="mix-blend-mode:multiply"/></g>
+  <g id="tint-outfit-w"><rect width="32" height="32" fill="var(--agent)" mask="url(#mk-outfit-w)"/><use href="#px-outfit-w" style="mix-blend-mode:multiply"/></g>
+
+  <!-- arte nossa (1 unidade = 1 px): acessórios dos clássicos e o alerta de bloqueado -->
+  <g id="px-hammer" class="px"><rect x="0" y="2" width="2" height="7" fill="#C89B5A"/><rect x="-2" y="0" width="6" height="3" fill="#3B3B3B"/><rect x="-2" y="0" width="6" height="1" fill="#5A5A5A"/></g>
+  <g id="px-case" class="px"><rect x="2" y="0" width="3" height="1" fill="#2B1D12"/><rect x="0" y="1" width="7" height="6" fill="#4A3220"/><rect x="0" y="3" width="7" height="1" fill="#2B1D12"/><rect x="3" y="3" width="1" height="1" fill="#C89B5A"/></g>
+  <g id="px-mega" class="px"><rect x="0" y="2" width="3" height="3" fill="#3B3B3B"/><rect x="3" y="1" width="2" height="5" fill="var(--agent-raw,#9C36B5)"/><rect x="5" y="0" width="2" height="7" fill="var(--agent-raw,#9C36B5)"/><rect x="8" y="1" width="1" height="1" fill="#3B3B3B"/><rect x="8" y="5" width="1" height="1" fill="#3B3B3B"/></g>
+  <g id="px-scope" class="px"><rect x="0" y="1" width="5" height="2" fill="#C89B5A"/><rect x="5" y="0" width="3" height="4" fill="#3B3B3B"/><rect x="7" y="1" width="1" height="2" fill="#BFDCEA"/></g>
+  <g id="px-badge" class="px"><rect x="0" y="0" width="4" height="5" fill="#F4F3EE"/><rect x="1" y="1" width="2" height="1" fill="#A5A69F"/><rect x="1" y="3" width="2" height="1" fill="#52534E"/></g>
+  <g id="px-alert" class="px"><rect x="-1" y="-1" width="10" height="10" fill="#fff"/><rect x="0" y="0" width="8" height="8" fill="var(--danger)"/><rect x="3.5" y="1.5" width="1" height="3.5" fill="#fff"/><rect x="3.5" y="5.5" width="1" height="1" fill="#fff"/></g>
+
+  <!-- ===== símbolos: MESMOS ids de sempre (contrato do motor). ===== -->
+  <!-- genérico: agente sem arte própria (hasArt:false). --agent/--skin/--hair vêm do fig(); o emoji vira crachá por instância. -->
+  <symbol id="av-generic-sit"     viewBox="0 0 32 32" style="isolation:isolate"><use href="#px-shadow"/><use href="#px-body-f"/><use href="#tint-outfit-f"/><use href="#px-hair-f"/></symbol>
+  <symbol id="av-generic-walk"    viewBox="0 0 32 32" style="isolation:isolate"><use href="#px-shadow"/><use href="#px-body-w"/><use href="#tint-outfit-w"/><use href="#px-hair-w"/></symbol>
+  <symbol id="av-generic-blocked" viewBox="0 0 32 32" style="isolation:isolate"><use href="#px-shadow"/><use href="#px-body-f"/><use href="#tint-outfit-f"/><use href="#px-hair-f"/><use href="#px-alert" x="23" y="1"/></symbol>
+  <!-- FORGE 🔨 moreno, cabelo preto, macacão tingido + martelo -->
+  <symbol id="av-forge-sit"     viewBox="0 0 32 32" style="isolation:isolate;--skin:5;--hair:6"><use href="#px-shadow"/><use href="#px-body-f"/><use href="#tint-outfit-f"/><use href="#px-hair-f"/><use href="#px-hammer" x="5" y="9"/></symbol>
+  <symbol id="av-forge-walk"    viewBox="0 0 32 32" style="isolation:isolate;--skin:5;--hair:6"><use href="#px-shadow"/><use href="#px-body-w"/><use href="#tint-outfit-w"/><use href="#px-hair-w"/><use href="#px-hammer" x="25" y="15"/></symbol>
+  <symbol id="av-forge-blocked" viewBox="0 0 32 32" style="isolation:isolate;--skin:5;--hair:6"><use href="#px-shadow"/><use href="#px-body-f"/><use href="#tint-outfit-f"/><use href="#px-hair-f"/><use href="#px-hammer" x="5" y="9"/><use href="#px-alert" x="23" y="1"/></symbol>
+  <!-- DEAL 💼 claro, loiro, pasta -->
+  <symbol id="av-deal-sit"     viewBox="0 0 32 32" style="isolation:isolate;--skin:0;--hair:5"><use href="#px-shadow"/><use href="#px-body-f"/><use href="#tint-outfit-f"/><use href="#px-hair-f"/><use href="#px-case" x="22" y="17"/></symbol>
+  <symbol id="av-deal-walk"    viewBox="0 0 32 32" style="isolation:isolate;--skin:0;--hair:5"><use href="#px-shadow"/><use href="#px-body-w"/><use href="#tint-outfit-w"/><use href="#px-hair-w"/><use href="#px-case" x="23" y="18"/></symbol>
+  <symbol id="av-deal-blocked" viewBox="0 0 32 32" style="isolation:isolate;--skin:0;--hair:5"><use href="#px-shadow"/><use href="#px-body-f"/><use href="#tint-outfit-f"/><use href="#px-hair-f"/><use href="#px-case" x="22" y="17"/><use href="#px-alert" x="23" y="1"/></symbol>
+  <!-- ECHO 📣 moreno-escuro, ruivo, megafone -->
+  <symbol id="av-echo-sit"     viewBox="0 0 32 32" style="isolation:isolate;--skin:3;--hair:2"><use href="#px-shadow"/><use href="#px-body-f"/><use href="#tint-outfit-f"/><use href="#px-hair-f"/><use href="#px-mega" x="22" y="12"/></symbol>
+  <symbol id="av-echo-walk"    viewBox="0 0 32 32" style="isolation:isolate;--skin:3;--hair:2"><use href="#px-shadow"/><use href="#px-body-w"/><use href="#tint-outfit-w"/><use href="#px-hair-w"/><use href="#px-mega" x="23" y="13"/></symbol>
+  <symbol id="av-echo-blocked" viewBox="0 0 32 32" style="isolation:isolate;--skin:3;--hair:2"><use href="#px-shadow"/><use href="#px-body-f"/><use href="#tint-outfit-f"/><use href="#px-hair-f"/><use href="#px-mega" x="22" y="12"/><use href="#px-alert" x="23" y="1"/></symbol>
+  <!-- SCOUT 🔭 claro, castanho, luneta -->
+  <symbol id="av-scout-sit"     viewBox="0 0 32 32" style="isolation:isolate;--skin:0;--hair:0"><use href="#px-shadow"/><use href="#px-body-f"/><use href="#tint-outfit-f"/><use href="#px-hair-f"/><use href="#px-scope" x="22" y="14"/></symbol>
+  <symbol id="av-scout-walk"    viewBox="0 0 32 32" style="isolation:isolate;--skin:0;--hair:0"><use href="#px-shadow"/><use href="#px-body-w"/><use href="#tint-outfit-w"/><use href="#px-hair-w"/><use href="#px-scope" x="23" y="15"/></symbol>
+  <symbol id="av-scout-blocked" viewBox="0 0 32 32" style="isolation:isolate;--skin:0;--hair:0"><use href="#px-shadow"/><use href="#px-body-f"/><use href="#tint-outfit-f"/><use href="#px-hair-f"/><use href="#px-scope" x="22" y="14"/><use href="#px-alert" x="23" y="1"/></symbol>
+  <!-- ARVYS 🎯 dourado, cabelo branco (o chefe de gabinete), sem acessório -->
+  <symbol id="av-arvys-sit"     viewBox="0 0 32 32" style="isolation:isolate;--skin:2;--hair:1"><use href="#px-shadow"/><use href="#px-body-f"/><use href="#tint-outfit-f"/><use href="#px-hair-f"/></symbol>
+  <symbol id="av-arvys-walk"    viewBox="0 0 32 32" style="isolation:isolate;--skin:2;--hair:1"><use href="#px-shadow"/><use href="#px-body-w"/><use href="#tint-outfit-w"/><use href="#px-hair-w"/></symbol>
+  <symbol id="av-arvys-blocked" viewBox="0 0 32 32" style="isolation:isolate;--skin:2;--hair:1"><use href="#px-shadow"/><use href="#px-body-f"/><use href="#tint-outfit-f"/><use href="#px-hair-f"/><use href="#px-alert" x="23" y="1"/></symbol>
+  <!-- SUBAGENTE (reviewer / explorer / sessão anônima) boné cinza + crachá -->
+  <symbol id="av-sub-sit"     viewBox="0 0 32 32" style="isolation:isolate;--skin:3;--hair:7"><use href="#px-shadow"/><use href="#px-body-f"/><use href="#tint-outfit-f"/><use href="#px-hair-f"/><use href="#px-badge" x="13" y="15"/></symbol>
+  <symbol id="av-sub-walk"    viewBox="0 0 32 32" style="isolation:isolate;--skin:3;--hair:7"><use href="#px-shadow"/><use href="#px-body-w"/><use href="#tint-outfit-w"/><use href="#px-hair-w"/><use href="#px-badge" x="18" y="15"/></symbol>
+  <symbol id="av-sub-blocked" viewBox="0 0 32 32" style="isolation:isolate;--skin:3;--hair:7"><use href="#px-shadow"/><use href="#px-body-f"/><use href="#tint-outfit-f"/><use href="#px-hair-f"/><use href="#px-badge" x="13" y="15"/><use href="#px-alert" x="23" y="1"/></symbol>
+</defs>
+</svg>
+</div>
+
+<header class="top">
+  <span class="brand">ARVYS <small>· QG ao vivo</small></span>
+  <a class="back" href="/">← hub</a>
+  <span class="status"><i class="sem" id="st-dot"></i><span id="st-txt">conectando…</span></span>
+  <button type="button" id="theme" title="alternar tema">tema</button>
+</header>
+<script>
+  // spec 2026-09-qg-plataforma (T6): dentro do iframe do QG a sidebar ja da a marca,
+  // o tema e o caminho de volta — o cabecalho proprio viraria moldura repetida.
+  // Fora do iframe (abrindo /live direto) nada muda.
+  if (window.self !== window.top) {
+    var _cab = document.querySelector('header.top');
+    if (_cab) _cab.style.display = 'none';
+  }
+</script>
+
+<main>
+  <h1>O escritório agora</h1>
+  <p class="lead">Cada ação real do Claude Code move um personagem: mesa acende quando a ferramenta roda, o agente vai à mesa do reviewer, a spec vai ao balcão. Sem sessão por 5 min, o agente vai à copa.</p>
+  <div class="legend" aria-label="Legenda">
+    <span><i class="sem on"></i>trabalhando</span>
+    <span><i class="sem bad"></i>bloqueado <span class="hint">(erro / permissão negada)</span></span>
+    <span><i class="sem wait"></i>esperando você <span class="hint">(Stop · spec em gate)</span></span>
+    <span><i class="sem"></i>ocioso <span class="hint">(copa)</span></span>
+  </div>
+
+  <div class="plan-wrap">
+  <svg class="plan" viewBox="0 0 1000 830" role="img" aria-labelledby="plan-title">
+    <title id="plan-title">Escritório Arvys em pixel-art visto de cima: sala de reunião, sala de trabalho com 4 estações e a mesa do Arvys, recepção, balcão de gates com mural e relógio, anexo dos subagentes e área de descanso — salas com paredes e portas</title>
+    <defs>
+      <clipPath id="room"><rect x="0" y="0" width="1000" height="830"/></clipPath>
+    </defs>
+
+    <g clip-path="url(#room)">
+    <rect class="floor" x="0" y="0" width="1000" height="830"/>
+    <!-- cenário em tiles (coordenadas de ARTE ×2): piso, paredes, vigas, portas, móveis de fundo — buildScene() -->
+    <g class="px-scene" id="px-scene" transform="scale(2)"></g>
+    <!-- mesas com placa e aro (coordenadas da cena, texto nítido) — buildScene() / buildGenericDesk() -->
+    <g id="px-desks"></g>
+
+    <!-- ===================== MURAL DO RH (junto dos contratados) — FILA 39 =====================
+         T3: um cartão por agente do agents.json (sem lista fixa), pintado por paintRhCards() a cada render
+         (idempotente: innerHTML inteiro). 3 colunas × 4 fileiras de 36 px sobre a tábua que extendRoomFor()
+         desenha; da 13ª em diante só "+N". Selo em latão = feedback esperando leitura. Clique → painel (modo RH). -->
+    <g id="rh-cards"></g>
+
+    <!-- ===================== BALCÃO DE GATES (sala do balcão) ===================== -->
+    <rect class="panel" x="772" y="322" width="192" height="76"/>
+    <foreignObject x="780" y="326" width="176" height="68">
+      <div class="fo" xmlns="http://www.w3.org/1999/xhtml">
+        <div class="lbl">Balcão · esperando você</div>
+        <div class="big zero" id="gates-n">0</div>
+        <div class="list" id="gates-list">nenhuma spec em gate</div>
+      </div>
+    </foreignObject>
+
+    <!-- ===================== MURAL DE EVENTOS ===================== -->
+    <rect class="panel" x="772" y="404" width="192" height="88"/>
+    <foreignObject x="780" y="408" width="176" height="80">
+      <div class="fo" xmlns="http://www.w3.org/1999/xhtml">
+        <div class="lbl">Mural · eventos</div>
+        <div class="list" id="mural">—</div>
+      </div>
+    </foreignObject>
+
+    <!-- ===================== RELÓGIO ===================== -->
+    <rect class="panel" x="772" y="498" width="192" height="50"/>
+    <foreignObject x="780" y="501" width="176" height="44">
+      <div class="fo" xmlns="http://www.w3.org/1999/xhtml">
+        <div class="lbl">Agora · <span id="ev-n">0</span> ev · 5 min</div>
+        <div class="big clock" id="clock">--:--</div>
+      </div>
+    </foreignObject>
+
+    <!-- ===================== ANEXO · sessão sem /arvys:open (tapete) ===================== -->
+    <text id="noopen-more" x="954" y="664" text-anchor="end" font-family="Bricolage Grotesque" font-weight="800" font-size="14" fill="var(--ink-2)"></text>
+
+    <!-- ===================== ÁREA DE DESCANSO ===================== -->
+    <text class="rlabel" x="44" y="816">Descanso · <tspan id="copa-n">0</tspan> agente(s) sem sessão</text>
+    <!-- FILA 40 (variante B, gate "B, mas gostei da barrinha na mesa do agente"): placar de fliperama HI·SCORE.
+         Moldura fixa; o conteúdo vem de paintPlacar(data.scores) a cada render (idempotente: innerHTML inteiro). -->
+    <g id="placar" class="placar"><rect x="760" y="704" width="204" height="124" fill="#3B3B3B"/><rect x="764" y="708" width="196" height="116" fill="#0E1013"/><g id="placar-dyn"></g></g>
+    </g>
+
+    <!-- camada das figuras (motor de cena) -->
+    <g id="figs"></g>
+    <!-- móveis NA FRENTE das pessoas (mesa, monitor, balcão): a figura senta atrás — buildScene() -->
+    <g class="px-front" id="px-front"></g>
+    <!-- balões (onda 3): camada ACIMA de móveis e figuras — cada balão segue a própria figura pela mesma transform -->
+    <g id="bubs"></g>
+  </svg>
+
+  <aside class="side" id="side" hidden aria-live="polite">
+    <button type="button" class="x" id="side-close" title="fechar (Esc)">✕</button>
+    <div class="hd"><b id="side-name">—</b><span class="call" id="side-call"></span></div>
+    <div class="st"><i class="sem" id="side-sem"></i><span id="side-state">—</span></div>
+    <div class="lbl" id="side-lbl-tool">Ferramenta</div>
+    <div class="mono" id="side-tool">—</div>
+    <div class="lbl" id="side-lbl-events">Últimos eventos</div>
+    <div class="list" id="side-events">—</div>
+    <div id="side-gate" hidden><div class="lbl">Esperando você</div><div class="list" id="side-gate-list"></div></div>
+    <!-- FILA 39 (modo RH): boletim por agente + feedback durável -->
+    <div id="side-boletim" hidden><div class="lbl">Boletim <span class="mono" id="side-bol-periodo"></span></div><div class="bol" id="side-bol-list"></div></div>
+    <!-- FILA 43: histórico. O arquivo é a fonte; isto é recorte para a tela. -->
+    <div id="side-fbhist" hidden><div class="lbl">Histórico <span class="mono" id="side-fbhist-n"></span></div><div class="bol" id="side-fbhist-list"></div></div>
+    <div class="recado" id="side-fb" hidden>
+      <div class="lbl">Deixar feedback <span class="n" id="side-fb-n" hidden></span></div>
+      <textarea id="side-feedback" maxlength="1000" rows="4" placeholder="ex.: treino: escrever o L1 antes de abrir o dossiê"></textarea>
+      <div class="row">
+        <span class="cont" id="side-fb-cont">0/1000</span>
+        <button type="button" id="side-fb-enviar">enviar</button>
+      </div>
+      <p class="nota" id="side-fb-nota">Assíncrono: lido no próximo <span class="mono">/arvys:open</span>. Feedback é durável — a retro lê, nunca é apagado.</p>
+    </div>
+    <div class="recado" id="side-recado">
+      <div class="lbl">Deixar recado <span class="n" id="side-inbox-n" hidden></span></div>
+      <textarea id="side-texto" maxlength="500" rows="3" placeholder="ex.: pesquisar concorrentes de agenda para clínicas"></textarea>
+      <div class="row">
+        <span class="cont" id="side-cont">0/500</span>
+        <button type="button" id="side-enviar">enviar</button>
+      </div>
+      <p class="nota" id="side-nota">Assíncrono: ele lê no próximo <span class="mono">/arvys:open</span>.</p>
+    </div>
+  </aside>
+
+  <div class="offline" id="offline" hidden>
+    <div class="panel">
+      <h2>Suba o servidor</h2>
+      <p>A planta viva lê <span class="mono">hub/live/events.jsonl</span> pelo servidor local. Na raiz do repositório:</p>
+      <code>node hub/serve.js</code>
+      <p>e abra <a href="http://127.0.0.1:5180/live">http://127.0.0.1:5180/live</a>. Esta página tenta reconectar a cada 2 s.</p>
+    </div>
+  </div>
+  <div class="offline" id="agents-missing" hidden>
+    <div class="panel">
+      <p>agents.json ausente — rode <span class="mono">node hub/build.js</span></p>
+    </div>
+  </div>
+  </div>
+
+  <p class="fonte">fonte: <span class="mono">hub/live/events.jsonl</span> (hooks do Claude Code) · <span class="mono">specs/*/spec.md</span> (status: gate)</p>
+</main>
+
+<script>
+// ---- motor de cena: fetch /api/live a cada 2 s → difere estado por figura → aplica cena ----
+const NS = 'http://www.w3.org/2000/svg';
+// A5 (review 2026-09-04): os 5 abaixo eram listas fixas com os 4 clássicos
+// como fallback. Isso é whitelist mentirosa num projeto implantado com outros
+// agentes — agora KNOWN/HOME/AGENTES_RECADO só existem depois do fetch de
+// /live/agents.json (gerado por hub/build.js a partir de agents/*/AGENT.md).
+// Os 4 clássicos continuam com arte própria (CLASSIC_HOME + hasArt), mas a
+// LISTA em si vem sempre do JSON — sem agents/, ninguém é desenhado.
+let KNOWN = [];
+let HOME = { arvys: [370, 332] };
+const CLASSIC_HOME = { forge: [86, 232], deal: [470, 232], echo: [86, 460], scout: [470, 460] };
+const SUBDESK = { reviewer: [78, 612], explorer: [324, 612] };   // mesa pequena do subagente
+const BESIDE  = { reviewer: [244, 612], explorer: [490, 612] };  // onde o agente-pai fica
+// ocioso não senta: vai brincar. Um ponto de lazer por agente, nunca empilhado.
+const LAZER = [[120, 726], [270, 722], [352, 726], [490, 722], [612, 722]];
+// A copa tem 5 vagas desenhadas. Quem nao cabe (contratados alem dos classicos)
+// descansa na propria mesa em vez de empilhar em cima de um classico.
+const COPA = i => (i >= 0 && i < LAZER.length) ? LAZER[i] : null;
+const BALCAO = i => [944 - 26 * i, 236];
+const NOOPEN = i => [740 + 70 * (i % 3), 598 + 27 * Math.floor(i / 3)];   // tapete 256×96: 3 por linha, 2 linhas; da 7ª em diante só "+N"
+const NOOPEN_MAX = 6;
+const ARVYS_SIDE = [430, 332];
+// onda 2 (pixel): sprite de 32 px de arte a 2× = 64 unidades. Escala é sempre inteira SOBRE A ARTE
+// (1 = 2×, .5 = 1×): fração quebra o pixelated (lente tema-escuro, onda 1). A mesa do anexo foi
+// redesenhada para o sprite de 64 — SUB_SCALE deixa de encolher (era .85 para o avatar de 64 não vazar a mesa de 58).
+const SUB_SCALE = 1;
+const NOOPEN_SCALE = .5;     // sessão anônima no tapete: 1× (era .58)
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const $ = s => document.querySelector(s);
+const layer = $('#figs'), figs = new Map();
+
+// ---- salas e portas (O2.3) ----
+// Cada sala é um retângulo do piso (cena); a porta é um ponto NA fronteira entre duas salas. Como sala é
+// convexa, o segmento reto "de dentro da sala até a porta" nunca cruza parede — e a rota é só a lista
+// de portas até o destino. A geometria daqui espelha buildScene(): vão no poste (x 736-752, y 288-352)
+// e vãos nas vigas (x 608-640) em y 544/672/830, mais o vão do balcão (x 864-896) em y 544.
+const SALAS = {
+  trabalho:    [16, 176, 744, 560],
+  balcao:      [744, 176, 984, 560],
+  anexo:       [16, 560, 984, 688],
+  descanso:    [16, 688, 984, 830],
+  contratados: [16, 830, 984, 1e9],   // só existe com agente fora dos 4 clássicos (extendRoomFor)
+};
+const PORTAS = [
+  ['trabalho', 'balcao',      [744, 320]],
+  ['trabalho', 'anexo',       [624, 560]],
+  ['balcao',   'anexo',       [880, 560]],
+  ['anexo',    'descanso',    [624, 688]],
+  ['descanso', 'contratados', [624, 830]],
+];
+function salaDe([x, y]) {
+  for (const [n, [x1, y1, x2, y2]] of Object.entries(SALAS)) if (x >= x1 && x < x2 && y >= y1 && y < y2) return n;
+  return null;
+}
+// trechos entre dois pontos: as portas no caminho (BFS no grafo de 5 salas) e, por último, o destino.
+// Mesma sala, ou ponto fora de qualquer sala: anda reto — a figura nunca fica presa esperando rota.
+function ROTA(de, para) {
+  const s0 = salaDe(de), s1 = salaDe(para);
+  if (!s0 || !s1 || s0 === s1) return comDesvios(de, [para]);   // mesma sala: só o desvio de móveis
+  const prev = { [s0]: null }, fila = [s0];
+  while (fila.length) {
+    const s = fila.shift();
+    if (s === s1) break;
+    for (const [a, b, p] of PORTAS) {
+      const v = a === s ? b : b === s ? a : null;
+      if (v && !(v in prev)) { prev[v] = [s, p]; fila.push(v); }
+    }
+  }
+  if (!(s1 in prev)) return [para];              // grafo sem caminho (não acontece hoje): reto, nunca parado
+  const portas = [];
+  for (let s = s1; prev[s]; s = prev[s][0]) portas.unshift(prev[s][1]);
+  return comDesvios(de, [...portas, para]);
+}
+// FILA 31: cada trecho reto (até a porta, e da porta ao destino) passa pelo desvio de móveis da sala onde começa
+function comDesvios(de, trechos) {
+  const out = []; let cur = de;
+  for (const p of trechos) { for (const q of desvia(cur, p)) out.push(q); cur = p; }
+  return out;
+}
+// ---- FILA 31: desvio de móveis DENTRO da sala ----
+// A onda 2 anda reto de porta a porta e passava por cima da mesa do Arvys. Aqui cada trecho reto vira um
+// caminho numa grade de 16 unidades da sala de origem, evitando as caixas dos móveis (tampos das mesas,
+// móveis do descanso) infladas pela meia-largura da figura. BFS + suavização por linha de visada, então
+// o resultado são poucos pontos. Sem caminho (célula de partida/chegada dentro de móvel, sala
+// desconhecida): trecho reto, como antes — a figura nunca fica presa (mesma regra do ROTA).
+const CEL = 16, FOLGA = 16;
+let OBST = null;                                  // caixas [x1,y1,x2,y2] na cena; recalculado quando HOME muda (applyAgentsJson)
+function obstaculos() {
+  if (OBST) return OBST;
+  const b = [];
+  for (const [n, [cx, cy]] of Object.entries(HOME)) b.push(n === 'arvys' ? [330, 352, 422, 412] : [cx - 40, cy + 20, cx + 52, cy + 80]);   // tampo da mesa (deskBlock: table-wood em X-4,Y+26)
+  for (const [cx, cy] of Object.values(SUBDESK)) b.push([cx - 40, cy + 12, cx + 52, cy + 72]);                                           // subBlock: mesa em Y+22
+  if (RH_ABERTO) b.push(RH_BOX);                                                                                                           // FILA 39: tábua do RH
+  b.push([300, 100, 484, 160], [776, 256, 960, 316],                                                                                       // reunião · balcão
+    [56, 704, 184, 760], [196, 700, 236, 786], [300, 700, 348, 772], [388, 700, 436, 772], [428, 704, 468, 764], [524, 700, 572, 758], [644, 708, 718, 768], [728, 716, 760, 776]);   // descanso
+  return (OBST = b);
+}
+const dentro = ([x, y], [x1, y1, x2, y2], g = 0) => x > x1 - g && x < x2 + g && y > y1 - g && y < y2 + g;
+function livre(p) { return !obstaculos().some(o => dentro(p, o, FOLGA)); }
+function visada(a, b) {                           // segmento a→b não toca móvel inflado (amostra a cada 8 unidades)
+  const d = Math.hypot(b[0] - a[0], b[1] - a[1]), n = Math.max(1, Math.ceil(d / 8));
+  for (let i = 1; i <= n; i++) if (!livre([a[0] + (b[0] - a[0]) * i / n, a[1] + (b[1] - a[1]) * i / n])) return false;
+  return true;
+}
+function desvia(a, b) {
+  const sala = salaDe(a); if (!sala || visada(a, b)) return [b];
+  const [x1, y1, x2, y2] = SALAS[sala], W = Math.ceil((x2 - x1) / CEL), H = Math.ceil((Math.min(y2, y1 + 4000) - y1) / CEL);
+  const cel = ([x, y]) => [Math.min(W - 1, Math.max(0, Math.floor((x - x1) / CEL))), Math.min(H - 1, Math.max(0, Math.floor((y - y1) / CEL)))];
+  const centro = ([i, j]) => [x1 + (i + .5) * CEL, y1 + (j + .5) * CEL];
+  const c0 = cel(a), c1 = cel(b), key = ([i, j]) => i + ',' + j;
+  if (!livre(centro(c1))) return [b];              // chegada dentro de móvel (ex.: vaga da copa encostada no pebolim): reto
+  const prev = new Map([[key(c0), null]]), fila = [c0];
+  let achou = false;
+  while (fila.length) {
+    const c = fila.shift();
+    if (c[0] === c1[0] && c[1] === c1[1]) { achou = true; break; }
+    for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const v = [c[0] + di, c[1] + dj];
+      if (v[0] < 0 || v[1] < 0 || v[0] >= W || v[1] >= H || prev.has(key(v)) || !livre(centro(v))) continue;
+      prev.set(key(v), c); fila.push(v);
+    }
+  }
+  if (!achou) return [b];
+  const pts = []; for (let c = c1; c; c = prev.get(key(c))) pts.unshift(centro(c));
+  pts[pts.length - 1] = b;                          // o último ponto é o destino exato, não o centro da célula
+  const out = []; let cur = a, i = 0;              // suavização: do ponto atual, pula para o mais distante com linha de visada
+  while (i < pts.length - 1) {
+    let j = pts.length - 1; while (j > i + 1 && !visada(cur, pts[j])) j--;
+    out.push(pts[j]); cur = pts[j]; i = j;
+    if (j === pts.length - 1) break;
+  }
+  if (!out.length || out[out.length - 1] !== b) out.push(b);
+  return out;
+}
+const PASSO = 220;                                // unidades por segundo; trecho dura entre .12 s e 1.5 s
+
+function fig(id, kind) {
+  let f = figs.get(id);
+  if (f) return f;
+  // T2.3: agente sem arte própria (AGENTS_META[kind].hasArt === false) usa o
+  // sprite genérico — nunca `av-${kind}-*`, que não existe pra ele. `kind`
+  // ausente de AGENTS_META (arvys, sub, x:...) mantém o comportamento de
+  // sempre: sprite com o próprio nome.
+  const meta = AGENTS_META[kind];
+  const generic = !!meta && meta.hasArt === false;
+  const spriteKind = generic ? 'generic' : kind;
+  // cor: do agents.json (frontmatter) para quem está lá; arvys/sub usam token de tema (não passa pelo clamp).
+  // A roupa recebe a cor CLAMPADA (luminosidade em [30%,72%]); crachá e aro seguem com a cor crua.
+  const raw = (meta && meta.color) || CORES[kind] || '#666';
+  const tint = /^#[0-9a-f]{6}$/i.test(raw) ? clampL(raw) : raw;
+  const lk = generic ? look(kind) : null;         // pele e cabelo por hash do SLUG: recolorir não troca a pessoa
+  const vars = `--agent:${tint};--agent-raw:${raw}` + (lk ? `;--skin:${lk.skin};--hair:${lk.hair}` : '');
+  const g = document.createElementNS(NS, 'g');
+  g.setAttribute('class', 'fig');
+  g.innerHTML = `<g class="spr"><svg x="-32" y="-32" width="64" height="64" viewBox="0 0 32 32" style="${vars}"><use href="#av-${spriteKind}-sit" width="32" height="32"/></svg></g>` +
+    (generic ? `<g class="badge"><rect x="-14" y="-58" width="28" height="22" fill="var(--plate)" stroke="${escHtml(raw)}" stroke-width="2"/><text class="fig-emoji" x="0" y="-47"></text></g>` : '') +
+    `<g class="doc"><rect x="20" y="-30" width="14" height="18"/><path d="M23-24h8M23-20h8M23-16h5"/></g>` +   // a etiqueta (.tag) mora no porta-balão (#bubs), acima da mesa da frente (P5)
+    `<g class="selo"><rect x="-36" y="-40" width="16" height="12" rx="2"/><path d="M-35-39l7 5 7-5"/></g>`;
+  if (generic) g.querySelector('.fig-emoji').textContent = meta.emoji || '•';
+  g.dataset.fig = id;
+  layer.appendChild(g);
+  // onda 3: o balão mora em #bubs (acima de #px-front e de todas as figuras) e recebe a MESMA transform da
+  // figura em place(). Dentro do <g> da figura ele ficava sob a mesa da frente e sob o sprite de quem está
+  // mais abaixo na cena (o Scout ao lado do Arvys falava por baixo do Deal).
+  const bg = document.createElementNS(NS, 'g');
+  bg.setAttribute('class', 'bubh');
+  // P5 (polimento): a etiqueta (.tag) também mora aqui — acima da cabeça ela ficava atrás da mesa da frente
+  bg.innerHTML = `<text class="tag" y="-62" text-anchor="middle"></text><g class="bub" opacity="0"><rect rx="7"/><path class="tip"/><text text-anchor="middle"></text></g>`;
+  $('#bubs').appendChild(bg);
+  f = { g, bg, use: g.querySelector('use'), spr: g.querySelector('.spr svg'), tag: bg.querySelector('.tag'), bub: bg.querySelector('.bub'), kind: spriteKind, sig: '', x: null, y: null, seq: 0, rota: null };
+  figs.set(id, f);
+  return f;
+}
+function place(f, [x, y], pose, o = {}) {
+  const moved = f.x !== null && (f.x !== x || f.y !== y);
+  // 1ª posição, aba em 2º plano (Chrome congela transições) ou reduced-motion (R1): aparece direto no destino
+  const salto = f.x === null || document.hidden || REDUCED;
+  const S = o.scale || 1;
+  const set = p => f.use.setAttribute('href', `#av-${f.kind}-${p}`);
+  const ir = ([px, py], dur) => { for (const el of [f.g, f.bg]) { el.style.transitionDuration = dur + 's'; el.style.transform = `translate(${px}px,${py}px) scale(${S})`; } };   // figura e porta-balão andam juntos
+  f.seq++; const meu = f.seq;                      // rota nova cancela a anterior (apply() só chama quando o plano muda)
+  clearTimeout(f.walk);
+  f.g.classList.toggle('blocked', !!o.blocked);
+  f.g.classList.toggle('doc', !!o.doc);
+  f.tag.textContent = (o.tag || '').slice(0, 16);   // cabe "entregou dossiê" (15); era 11 e cortava em "entregou do"
+  bubble(f, o.bubble, o.bubbleTone);
+  const parar = () => { set(pose); f.g.classList.remove('left'); f.spr.style.setProperty('--walk', 'paused'); };
+  if (salto || !moved) {
+    f.g.style.transition = f.bg.style.transition = 'none'; ir([x, y], 0); requestAnimationFrame(() => (f.g.style.transition = f.bg.style.transition = ''));
+    f.x = x; f.y = y; f.rota = null; parar(); return;
+  }
+  const rota = ROTA([f.x, f.y], [x, y]);           // trechos: porta a porta, depois o destino
+  let de = [f.x, f.y];
+  f.x = x; f.y = y; f.rota = rota;                 // alvo já é o destino: bubblePass e a próxima rota partem do alvo, não do meio do caminho
+  set('walk'); f.spr.style.setProperty('--walk', 'running');
+  const trecho = i => {
+    if (f.seq !== meu) return;                     // outra rota assumiu esta figura
+    if (i >= rota.length) { parar(); return; }     // chegou: pose final, ciclo de andar parado
+    const p = rota[i], d = Math.hypot(p[0] - de[0], p[1] - de[1]);
+    const dur = Math.min(1.5, Math.max(.12, d / PASSO));   // FILA 31: trechos curtos do desvio não podem "arrastar" .25 s cada
+    f.g.classList.toggle('left', p[0] < de[0]);
+    ir(p, dur); de = p;
+    f.walk = setTimeout(() => trecho(i + 1), dur * 1000 + 30);
+  };
+  trecho(0);
+}
+// ---- B2: balão de fala ----
+// Ancorado acima da cabeça. Some quando não há o que dizer. A anticolisão roda
+// depois, em bubblePass(), quando já se sabe onde todo mundo parou.
+function bubble(f, txt, tone) {
+  const b = f.bub, t = b.querySelector('text'), r = b.querySelector('rect'), tip = b.querySelector('.tip');
+  if (!txt) { b.setAttribute('opacity', '0'); f.bubW = 0; return; }
+  t.textContent = txt;
+  const w = Math.max(34, txt.length * 5.5 + 16), h = 17;
+  f.bubW = w; f.bubH = h;
+  r.setAttribute('x', -w / 2); r.setAttribute('width', w); r.setAttribute('height', h);
+  t.setAttribute('x', 0);
+  tip.setAttribute('d', 'M-4 0h8l-4 5z');
+  b.classList.toggle('bad', tone === 'bad');
+  b.classList.toggle('wait', tone === 'wait');
+  b.setAttribute('opacity', '1');
+  f.bubY = -90;                                    // padrão: logo acima da cabeça (sprite 64, crachá até -58, etiqueta em -62)
+  bubbleAt(f, -90);
+}
+function bubbleAt(f, y) {
+  const b = f.bub, r = b.querySelector('rect'), t = b.querySelector('text'), tip = b.querySelector('.tip');
+  f.bubY = y;
+  r.setAttribute('y', y);
+  t.setAttribute('y', y + 12);
+  tip.setAttribute('transform', `translate(0,${y + f.bubH})`);
+}
+// anticolisão: empurra balões sobrepostos para cima e mantém tudo dentro do viewBox
+function bubblePass() {
+  const vis = [...figs.values()].filter(f => f.bubW && f.x !== null)
+    .sort((a, b) => (a.y - b.y) || (a.x - b.x));
+  const postos = [];
+  const half_ = f => f.bubW / 2;
+  const bateEm = (box) => postos.some(p => box.x1 < p.x2 + 4 && box.x2 > p.x1 - 4 && box.y1 < p.y2 + 3 && box.y2 > p.y1 - 3);
+  const caixa = (f, y, dx) => ({ x1: f.x - half_(f) + dx, x2: f.x + half_(f) + dx, y1: f.y + y, y2: f.y + y + f.bubH });
+  for (const f of vis) {
+    const half = half_(f);
+    // clamp: não deixar o balão sair pela esquerda/direita do viewBox (agente na borda)
+    const dx0 = Math.min(0, 994 - (f.x + half)) - Math.min(0, (f.x - half) - 6);
+    let y = -90, dx = dx0, livre = !bateEm(caixa(f, y, dx));
+    for (let sobe = 1; !livre && sobe <= 5; sobe++) {          // 1) sobe uma linha por vez
+      y = -90 - sobe * (f.bubH + 4);
+      livre = !bateEm(caixa(f, y, dx));
+    }
+    if (!livre) for (const lado of [half + 8, -(half + 8)]) {  // 2) ainda batendo: sai de lado
+      const cand = dx0 + lado;
+      if (f.x + cand + half > 994 || f.x + cand - half < 6) continue;
+      y = -90;
+      if (!bateEm(caixa(f, y, cand))) { dx = cand; livre = true; break; }
+    }
+    // 3) sem lugar livre: some. Balão ilegível sobre outro mente mais do que balão ausente.
+    f.bub.setAttribute('opacity', livre ? '1' : '0');
+    if (!livre) { f.bubW = 0; continue; }
+    f.bub.setAttribute('transform', dx ? `translate(${dx},0)` : '');
+    bubbleAt(f, y);
+    postos.push(caixa(f, y, dx));
+  }
+}
+function apply(f, plan) {                     // difere por assinatura; só re-aplica o que mudou
+  const sig = JSON.stringify(plan);
+  if (sig === f.sig) return;
+  f.sig = sig;
+  clearTimeout(f.then);
+  place(f, plan.pos, plan.pose, plan.o);
+  if (plan.then) f.then = setTimeout(() => place(f, plan.then.pos, plan.then.pose, plan.then.o), plan.wait || 2000);   // wait: quanto fica no 1º ponto (onda 3: encontro dura 3 ticks)
+}
+// ---- B1: FONTE ÚNICA de texto de estado ----
+// Um estado vira UM objeto {sem, curto, longo, on}. Mesa, balão e painel leem
+// daqui e só daqui — se cada um formatasse por conta, divergiriam (risco R3, e a
+// cicatriz do gotcha 4: duas fontes para o mesmo número).
+const VIEW = new Map();
+const CAP = 28;                                   // balão: cabe ~28 caracteres sem virar parede de texto
+// ---- onda 3 (O3.1): conversa = dois balões que se ALTERNAM ----
+// Um "par de encontro" nasce no render (pai ↔ subagente, Scout ↔ Arvys). Num par com dois textos,
+// só um fala por tick e o outro cala (a linha da mesa volta a mostrar o texto dele); no tick seguinte
+// troca. Texto marcado `encontro` (ex.: "recebeu dossiê") só existe COM o par por perto — fora do
+// encontro seria afirmação sem evento, então cala (O3.3, gotcha 9). Tudo isto decide QUEM fala;
+// bubblePass() continua decidindo ONDE, depois.
+let TURNO = 0;                                    // tick da conversa: incrementa a cada render
+const PERTO = 180;                                // distância máxima (unidades) para um par conversar: Forge↔reviewer = 166, Scout↔Arvys = 60
+const ENCONTRO_MS = 6000;                         // dossiê: Scout fica 3 ticks ao lado do Arvys antes de descansar (era 2 s = 1 tick, conversa invisível)
+function setView(name, sem, longo, on, extra = {}) {
+  if (VIEW.has(name)) return VIEW.get(name);      // primeiro a falar vence, como o `||=` de antes
+  const v = { sem, on, longo, curto: longo.length > CAP ? longo.slice(0, CAP - 1) + '…' : longo, ...extra };
+  VIEW.set(name, v);
+  return v;
+}
+function desk(name, sem, text, on) {
+  const d = document.querySelector(`[data-desk="${name}"]`);
+  if (!d) return;
+  d.querySelector('.desk').classList.toggle('on', !!on);
+  const fr = document.querySelector(`[data-desk-front="${name}"]`); if (fr) fr.classList.toggle('on', !!on);   // monitor respira com a mesa acesa
+  const s = d.querySelector('.sem'); if (s) s.className = 'sem ' + sem;
+  const t = d.querySelector('.task'); if (t) t.textContent = (text || '').slice(0, 34);   // SVG text não quebra linha: corta em vez de vazar da mesa
+}
+const base = p => (p || '').split('/').pop();
+const isRead = t => /^(Read|Grep|Glob)$/.test(t || '');
+function describe(ev, evs) {                  // "editando build.js" · "rodando testes" · "lendo 3 arquivos"
+  if (!ev || !ev.tool) return '';               // O3.3: sem evento de ferramenta não há o que dizer — o balão cala (antes: "trabalhando", frase sem evento)
+  const t = ev.tool, tg = ev.target || '';
+  if (/^(Edit|Write|MultiEdit|NotebookEdit)$/.test(t)) return 'editando ' + (base(tg) || 'arquivo');
+  if (t === 'Bash') return /test|vitest|tsc|jest|playwright/i.test(tg) ? 'rodando testes' : 'rodando ' + (tg || 'comando');
+  if (isRead(t)) {
+    let n = 0;
+    for (let i = evs.length - 1; i >= 0 && (!evs[i].tool || isRead(evs[i].tool)); i--) if (evs[i].event === 'PreToolUse') n++;
+    return `lendo ${n || 1} arquivo${n > 1 ? 's' : ''}`;
+  }
+  // ferramenta de MCP vem como `mcp__servidor__acao`: mostra só a ação, senão o balão vira uma parede
+  const nome = t.startsWith('mcp__') ? t.split('__').pop() : t.toLowerCase();
+  return nome + (tg ? ' ' + base(tg) : '');
+}
+
+function render(data) {
+  paintRhCards(data);                              // FILA 39: mural do RH (antes das figuras: o painel lê LAST em paintPanel)
+  const now = Date.parse(data.now) || Date.now();
+  const bySid = {};
+  for (const e of data.events || []) (bySid[e.session_id] ||= []).push(e);
+  const seen = new Set(), count = {}, subs = {}, subAtivo = {}, subPais = {};
+  VIEW.clear();
+  const pares = [];                            // onda 3: [idA, idB] que conversam quando por perto
+  let noopen = 0;
+  const sessions = Object.entries(data.agents || {}).map(([k, a]) => ({ a, agent: k.split('#')[0], sid: k.split('#')[1] || '' }))
+    .filter(s => s.a.state !== 'idle' && Date.parse(s.a.expires) > now).sort((p, q) => (p.a.since < q.a.since ? -1 : 1));
+  for (const s of sessions) {
+    const evs = bySid[s.sid] || [], last = evs[evs.length - 1];
+    const lastTool = [...evs].reverse().find(e => e.tool) || (s.a.tool ? { tool: s.a.tool, target: s.a.target } : null);
+    const text = describe(lastTool, evs);
+    const subType = s.a.agent_type || (last && last.event !== 'SubagentStop' ? last.agent_type : null);   // redutor primeiro; janela de eventos como fallback
+    const sub = /^(reviewer|explorer)$/.test(subType || '') ? subType : null;
+    if (!KNOWN.includes(s.agent)) {             // sessão sem /arvys:open, ou subagente anônimo (`sub:<tipo>`): caixa genérica
+      if (SUBDESK[s.agent]) {                   // reviewer/explorer solto (sem pai identificado): mesa pequena dele
+        const f = fig('x:' + s.agent + s.sid, 'sub'); seen.add('x:' + s.agent + s.sid);
+        apply(f, { pos: SUBDESK[s.agent], pose: s.a.state === 'blocked' ? 'blocked' : 'sit', o: { scale: SUB_SCALE, blocked: s.a.state === 'blocked' } });
+        subs[s.agent] = text; continue;
+      }
+      if (noopen++ >= NOOPEN_MAX) continue;     // além da caixa: só entra no contador "+N"
+      const f = fig('x:' + s.agent + s.sid, 'sub'); seen.add('x:' + s.agent + s.sid);
+      let tt = f.g.querySelector('title'); if (!tt) { tt = document.createElementNS(NS, 'title'); f.g.prepend(tt); }   // sem etiqueta (não cabe em 2 linhas): nome no hover
+      tt.textContent = s.agent === 'sem-open' ? 'sessão sem /arvys:open' : 'subagente ' + s.agent.replace(/^sub:/, '');
+      apply(f, { pos: NOOPEN(noopen - 1), pose: s.a.state === 'blocked' ? 'blocked' : 'sit', o: { scale: NOOPEN_SCALE, blocked: s.a.state === 'blocked' } });
+      continue;
+    }
+    const n = (count[s.agent] = (count[s.agent] || 0) + 1), id = n === 1 ? s.agent : `${s.agent}#${n}`;
+    const f = fig(id, s.agent); seen.add(id);
+    const tag = n > 1 ? `${s.agent} ·${n}` : '', home = [HOME[s.agent][0] + 26 * (n - 1), HOME[s.agent][1] + 14 * (n - 1)];
+    const lastWrite = [...evs].reverse().find(e => e.tool === 'Write');
+    if (sub) {                                  // pai caminha até a mesa pequena; subagente aparece e trabalha
+      // D1 (reviewer, onda 3): dois pais com o MESMO tipo de subagente caíam no mesmo pixel. A mesa pequena é
+      // uma só, então o 2º pai fica ao lado (mesmo escalonamento do `home` para forge#2); o texto da mesa do
+      // subagente é o do último pai — declarado, não escondido.
+      const k = (subPais[sub] = (subPais[sub] || 0) + 1) - 1;
+      apply(f, { pos: [BESIDE[sub][0] + 26 * k, BESIDE[sub][1] + 14 * k], pose: 'walk', o: { tag } });
+      const sf = fig('sub:' + sub, 'sub'); seen.add('sub:' + sub);
+      apply(sf, { pos: SUBDESK[sub], pose: 'sit', o: { scale: SUB_SCALE } });
+      subs[sub] = text; subAtivo[sub] = true;   // texto pode ser '' (sem ferramenta ainda): mesa acesa, balão calado
+      setView(s.agent, 'on', `com o ${sub}`, true, { tool: text, sid: s.sid });
+      pares.push([id, 'sub:' + sub]);           // os dois falam alternado enquanto o subagente trabalha
+    } else if (s.a.state === 'blocked') {
+      apply(f, { pos: home, pose: 'blocked', o: { tag, blocked: true } });
+      setView(s.agent, 'bad', 'bloqueado' + (text ? ': ' + text : ''), true, { tone: 'bad', tool: text, sid: s.sid });   // sem ferramenta: "bloqueado", não "bloqueado: " (plausível do reviewer)
+    } else if (s.a.state === 'stopped' && s.agent === 'scout' && lastWrite && /^docs\//.test(lastWrite.target || '')) {
+      apply(f, { pos: ARVYS_SIDE, pose: 'walk', o: { tag: 'entregou dossiê', doc: true }, wait: ENCONTRO_MS, then: { pos: COPA(KNOWN.indexOf('scout')) || HOME['scout'], pose: 'walk', o: { scale: 1 } } });
+      // os dois textos vêm do MESMO evento (o Write em docs/ + Stop): o Arvys diz o nome do arquivo que
+      // recebeu, nunca uma frase própria — e ambos calam quando o Scout sai de perto (`encontro`)
+      setView(s.agent, '', 'dossiê entregue ao Arvys', false, { sid: s.sid, fala: true, encontro: true });
+      if (!(data.gates || []).some(x => x.owner === 'arvys')) {   // R6(f) do reviewer: Arvys com spec no balcão fala do balcão, não do dossiê (setView é first-wins)
+        setView('arvys', '', 'recebeu ' + base(lastWrite.target), false, { fala: true, encontro: true });
+        pares.push([id, 'arvys']);
+      }
+    } else if (s.a.state === 'stopped') {
+      apply(f, { pos: home, pose: 'sit', o: { tag } });
+      setView(s.agent, 'wait', 'esperando você', false, { tone: 'wait', tool: text, sid: s.sid });
+    } else {
+      apply(f, { pos: home, pose: 'sit', o: { tag } });
+      setView(s.agent, 'on', text, true, { tool: text, sid: s.sid });
+    }
+  }
+  const gates = data.gates || [];
+  let copa = 0;
+  for (const name of KNOWN) {                   // sem sessão: balcão (spec em gate) · mesa (Arvys) · copa
+    if (seen.has(name)) { const v = VIEW.get(name); desk(name, v.sem, v.curto, v.on); continue; }
+    const g = gates.filter(x => x.owner === name), f = fig(name, name); seen.add(name);
+    if (g.length) { apply(f, { pos: BALCAO(gates.findIndex(x => x.owner === name)), pose: 'walk', o: { doc: true, tag: name, scale: 1 } }); const v = setView(name, 'wait', 'no balcão: ' + g.map(x => x.slug).join(', '), false, { tone: 'wait' }); desk(name, v.sem, v.curto, v.on); }
+    else if (name === 'arvys') { apply(f, { pos: HOME.arvys, pose: 'sit', o: { scale: 1 } }); const v = setView(name, '', '', false); desk(name, v.sem, v.curto, v.on); }   // primeiro a falar vence: se o Scout entregou, a VIEW já diz "recebeu …"
+    else { const vaga = COPA(KNOWN.indexOf(name)); if (vaga) { copa++; apply(f, { pos: vaga, pose: 'walk', o: { scale: 1 } }); } else { apply(f, { pos: HOME[name], pose: 'sit', o: {} }); } setView(name, '', 'no descanso', false); desk(name, '', 'no descanso', false); }
+  }
+  for (const [id, f] of figs) if (!seen.has(id)) { f.g.remove(); f.bg.remove(); figs.delete(id); }
+  for (const s of ['reviewer', 'explorer']) {
+    setView(s, '', subs[s] || '', !!(subs[s] || subAtivo[s]));
+    desk(s, '', subs[s] || '', !!(subs[s] || subAtivo[s]));
+  }
+
+  // ---- balões: texto vem SÓ da VIEW; ocioso não fala (senão a sala vira mural) ----
+  TURNO++;
+  const nomeDe = id => id.replace(/^sub:/, '').split('#')[0];
+  const falaDe = new Map();
+  for (const [id] of figs) {
+    const v = VIEW.get(nomeDe(id));
+    falaDe.set(id, !id.startsWith('x:') && v && (v.sem || v.on || v.fala) ? v.curto : '');   // figura anônima não fala: não se sabe quem é
+  }
+  // O3.1 · turno: par por perto com dois textos → um fala, o outro cala; troca no próximo tick
+  const perto = (a, b) => !!a && !!b && a.x !== null && b.x !== null && Math.hypot(a.x - b.x, a.y - b.y) <= PERTO;
+  const emEncontro = new Set();
+  for (const [ia, ib] of pares) {
+    if (!perto(figs.get(ia), figs.get(ib))) continue;
+    emEncontro.add(ia); emEncontro.add(ib);
+    if (falaDe.get(ia) && falaDe.get(ib)) falaDe.set(TURNO % 2 ? ib : ia, '');
+  }
+  // O3.3 · texto de encontro sem o par por perto é afirmação sem evento: cala
+  for (const [id] of figs) { const v = VIEW.get(nomeDe(id)); if (v && v.encontro && !emEncontro.has(id)) falaDe.set(id, ''); }
+  for (const [id, f] of figs) {
+    const nome = nomeDe(id), v = VIEW.get(nome), fala = falaDe.get(id);
+    bubble(f, fala, v && v.tone);
+    if (fala) {                                    // com balão no ar, a linha na mesa vira eco: cala uma das duas
+      const d = document.querySelector(`[data-desk="${nome}"]`), t = d && d.querySelector('.task');
+      if (t) t.textContent = '';
+    }
+  }
+  // selo de recado esperando: no avatar do agente, some quando o /arvys:open lê
+  const inbox = data.inbox || {};
+  for (const [id, f] of figs) {
+    const nome = id.replace(/^sub:/, '').split('#')[0];
+    f.g.classList.toggle('tem-recado', !id.startsWith('x:') && (inbox[nome] || 0) > 0);
+  }
+  bubblePass();
+  paintPanel(data);
+  $('#copa-n').textContent = copa;
+  $('#noopen-more').textContent = noopen > NOOPEN_MAX ? `+${noopen - NOOPEN_MAX}` : '';
+  $('#gates-n').textContent = gates.length; $('#gates-n').classList.toggle('zero', !gates.length);
+  $('#gates-list').textContent = gates.length ? gates.map(x => `${x.slug} · ${x.owner || '?'}`).join('\n') : 'nenhuma spec em gate';
+  $('#mural').textContent = (data.events || []).slice(-4).reverse().map(e => `${e.ts.slice(11, 19)} ${(e.agent || e.agent_type || '?').slice(0, 8)} ${e.tool ? e.tool.slice(0, 10) : e.event} ${base(e.target).slice(0, 12)}`.trim()).join('\n') || '—';
+  $('#ev-n').textContent = (data.events || []).length + (data.events && data.events.length >= 200 ? '+' : '');
+  $('#clock').textContent = new Date(now).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+  // placar: DESCRITIVO, sai de arquivo (specs por owner/status, incidents).
+  // Agente sem spec mostra "—", nunca "0" — zero por falta de dado leria como mau desempenho.
+  const sc = data.scores || {}, tf = sc.trofeus || {}, sa = sc.agents || {};
+  // Sem fonte de métricas, NADA de `?? 0`: "0 specs fechadas" é zero fingindo
+  // ser medição — o defeito que o reviewer confirmou em 2026-09-02. A tela diz
+  // que não sabe, e ensina como saber.
+  const semFonte = (data.metricas && data.metricas.indisponivel) || sc.indisponivel || null;
+  paintPlacar(tf, sa, semFonte);
+  paintXpBars(sa, semFonte);
+}
+// ---- FILA 40: placar de fliperama (variante B) ----
+// Mesmos números de sempre (data.scores, arquivo é a fonte). Sem medição: a tela diz e ensina, nunca "0".
+// Agente sem spec: "—". Sem nota composta, sem ranking (ordem = KNOWN, a mesma das mesas) — Goodhart, FILA 21.
+// Barra = fração do XP entre o nível atual e o próximo (nível = floor(sqrt(xp/100)) + 1, como no serve.js).
+function xpFrac(a) {
+  const cur = 100 * (a.nivel - 1) ** 2, nxt = 100 * a.nivel ** 2;
+  return Math.max(0, Math.min(1, (a.xp - cur) / (nxt - cur || 1)));
+}
+function paintPlacar(tf, sa, semFonte) {
+  const X = 764, Y = 708, esc = escHtml;
+  const trofeu = (x, y) => `<g transform="translate(${x},${y})"><rect x="1" y="0" width="8" height="6" fill="#F5A623"/><rect x="0" y="0" width="10" height="2" fill="#FFD43B"/><rect x="3" y="6" width="4" height="2" fill="#F5A623"/><rect x="1" y="8" width="8" height="2" fill="#8A6D1D"/></g>`;
+  let s = `<text x="${X + 98}" y="${Y + 15}" text-anchor="middle" font-size="11" fill="#F5A623">HI·SCORE</text>` +
+    `<text x="${X + 190}" y="${Y + 112}" text-anchor="end" font-size="5" font-weight="400" fill="#6E6F68">CLIQUE ▸ DETALHE</text>`;
+  if (semFonte) {
+    s += `<text x="${X + 98}" y="${Y + 31}" text-anchor="middle" font-size="8">SEM MEDIÇÃO</text>` +
+      `<text x="${X + 98}" y="${Y + 41}" text-anchor="middle" font-size="6" font-weight="400" fill="#A9AAA2">${esc((semFonte.comoGerar || '').slice(0, 44))}</text>`;
+  } else {
+    const itens = [`${tf.fechadas ?? 0} SPECS`, tf.diasSemIncidente == null ? null : `${tf.diasSemIncidente}D S/ INCID.`, `${tf.incidentes ?? 0} LEIS`].filter(Boolean);
+    const w = 196 / itens.length;
+    itens.forEach((t, i) => { const x0 = X + i * w + 6; s += trofeu(x0, Y + 22) + `<text x="${x0 + 13}" y="${Y + 30}" font-size="7">${esc(t)}</text>`; });
+  }
+  s += `<rect x="${X + 8}" y="${Y + 37}" width="180" height="1" fill="#3B3B3B"/>`;
+  const rh = Math.min(11, Math.floor(72 / Math.max(KNOWN.length, 1)));   // 7 agentes → 10 px por linha; cabe até 9
+  KNOWN.forEach((n, i) => {
+    const y = Y + 48 + i * rh, a = sa[n];
+    s += `<text x="${X + 10}" y="${y}" font-size="7">${esc(n.slice(0, 6).toUpperCase())}</text>`;
+    if (!a) { s += `<text x="${X + 58}" y="${y}" font-size="7" fill="#6E6F68">—</text>`; return; }
+    s += `<text x="${X + 58}" y="${y}" font-size="7" fill="#F5A623">N${a.nivel}</text>`;
+    const cheios = Math.round(xpFrac(a) * 10), cor = esc(CORES[n] || 'var(--brass)');
+    for (let b = 0; b < 10; b++) s += `<rect x="${X + 78 + b * 11}" y="${y - 6}" width="9" height="6" fill="${b < cheios ? cor : '#2A2C31'}"/>`;
+  });
+  $('#placar-dyn').innerHTML = s;
+}
+// barra de XP sob a plaquinha de cada mesa (deskBlock: clássicos e contratados, mesmo molde). Sem score: some.
+function paintXpBars(sa, semFonte) {
+  for (const el of document.querySelectorAll('.xpbar')) {
+    const a = !semFonte && sa[el.dataset.xp];
+    el.style.display = a ? '' : 'none';
+    if (a) el.querySelector('.xp-fill').setAttribute('width', Math.round(174 * xpFrac(a)));
+  }
+}
+// ---- B3: painel lateral ----
+// Um por vez. Lê da MESMA VIEW que a mesa e o balão (R3) e do payload cru para
+// os eventos. Some sozinho quando o agente deixa de existir na cena (R5).
+let CORES = { forge: '#E8590C', deal: '#1971C2', echo: '#9C36B5', scout: '#2F9E44', arvys: 'var(--brass)', reviewer: 'var(--idle)', explorer: 'var(--idle)' };
+let CALL = { forge: 'vibe-web', deal: 'vibe-business', echo: 'vibe-marketing', scout: 'vibe-intel', arvys: 'orquestra', reviewer: 'subagente', explorer: 'subagente' };
+let SEL = null, MODE = 'desk';                    // MODE: 'desk' (mesa/figura) | 'rh' (cartão do mural, FILA 39)
+function openPanel(name, mode = 'desk') {
+  if (SEL !== name) {                              // trocar de agente com texto no campo mandaria o recado/feedback ao errado
+    $('#side-texto').value = '';
+    $('#side-cont').textContent = '0/500';
+    $('#side-feedback').value = '';
+    $('#side-fb-cont').textContent = '0/1000';
+    notaPadrao(); fbNotaPadrao();
+  }
+  SEL = name; MODE = mode;
+  document.querySelectorAll('[data-desk].sel, .rh-card.sel').forEach(d => d.classList.remove('sel'));
+  const d = document.querySelector(mode === 'rh' ? `.rh-card[data-rh="${name}"]` : `[data-desk="${name}"]`); if (d) d.classList.add('sel');
+  $('#side').hidden = false;
+  paintPanel(LAST);
+}
+function closePanel() {
+  SEL = null; MODE = 'desk';
+  document.querySelectorAll('[data-desk].sel, .rh-card.sel').forEach(el => el.classList.remove('sel'));
+  $('#side').hidden = true;
+}
+// quais seções do painel aparecem em cada modo (desk: ferramenta/eventos/recado · rh: boletim/feedback)
+function sideSections(rh) {
+  for (const id of ['side-lbl-tool', 'side-tool', 'side-lbl-events', 'side-events', 'side-recado']) $('#' + id).hidden = rh;
+  $('#side-boletim').hidden = !rh; $('#side-fb').hidden = !rh; $('#side-fbhist').hidden = !rh;
+}
+let LAST = {};
+function paintPanel(data) {
+  LAST = data || LAST;
+  if (!SEL) return;
+  if (SEL === 'placar') return paintPlacarPanel();
+  if (MODE === 'rh') return paintRhPanel();
+  sideSections(false);
+  $('#side-lbl-tool').textContent = 'Ferramenta'; $('#side-lbl-events').textContent = 'Últimos eventos';
+  const v = VIEW.get(SEL);
+  if (!v) { closePanel(); return; }                // agente sumiu da cena: painel não fica preso com dado velho
+  const side = $('#side');
+  side.style.setProperty('--agent', CORES[SEL] || 'var(--brass)');
+  $('#side-name').textContent = SEL[0].toUpperCase() + SEL.slice(1);
+  $('#side-call').textContent = CALL[SEL] || '';
+  $('#side-sem').className = 'sem ' + (v.sem || '');
+  $('#side-state').textContent = v.longo || (v.on ? 'sessão ativa, sem ferramenta registrada' : 'sem sessão aberta');   // O3.3: o painel explica a ausência; o balão só cala
+  $('#side-tool').textContent = v.tool || '—';
+  const evs = (LAST.events || []).filter(e => (e.agent || e.agent_type) === SEL).slice(-5).reverse();
+  $('#side-events').textContent = evs.length
+    ? evs.map(e => `${(e.ts || '').slice(11, 19)} ${e.tool || e.event} ${base(e.target)}`.trim()).join('\n')
+    : 'nenhum evento deste agente na janela';
+  const g = (LAST.gates || []).filter(x => x.owner === SEL);
+  $('#side-gate').hidden = !g.length;
+  if (g.length) $('#side-gate-list').textContent = g.map(x => x.slug).join('\n');
+
+  const n = (LAST.inbox || {})[SEL] || 0;          // quantos recados ainda esperam
+  const badge = $('#side-inbox-n');
+  badge.hidden = !n;
+  badge.textContent = n === 1 ? '1 esperando' : `${n} esperando`;
+  // ONLINE entra aqui porque o servidor pode cair DEPOIS da página carregar:
+  // o token continuaria em memória e o campo ficaria habilitado mentindo.
+  const podeEscrever = AGENTES_RECADO.includes(SEL) && !!TOKEN_QG && ONLINE;
+  $('#side-texto').disabled = !podeEscrever;
+  $('#side-enviar').disabled = !podeEscrever || !$('#side-texto').value.trim();
+  if (!podeEscrever && !NOTA_PRESA) {
+    nota(!AGENTES_RECADO.includes(SEL) ? 'Subagente não tem caixa de recado — ele não abre sessão própria.'
+                                       : 'Sem servidor: recado indisponível. Rode node hub/serve.js.', 'erro');
+  } else if (podeEscrever && !NOTA_PRESA) {
+    notaPadrao();                                  // servidor voltou: some o aviso de erro
+  }
+}
+
+// FILA 40 (pedido do dono, 05/09): clique no placar → o painel lateral abre com o detalhe dos mesmos números
+// (por agente: nível, xp, specs, fechadas; troféus por extenso; fonte e fórmula). Só leitura: sem recado.
+function paintPlacarPanel() {
+  const sc = LAST.scores || {}, tf = sc.trofeus || {}, sa = sc.agents || {};
+  const semFonte = (LAST.metricas && LAST.metricas.indisponivel) || sc.indisponivel || null;
+  sideSections(false);
+  $('#side').style.setProperty('--agent', '#F5A623');
+  $('#side-name').textContent = 'Placar';
+  $('#side-call').textContent = 'troféus · xp';
+  $('#side-sem').className = 'sem';
+  $('#side-state').textContent = semFonte
+    ? 'sem medição — ' + (semFonte.comoGerar || '')
+    : [`${tf.fechadas ?? 0} specs fechadas com evidência`, tf.diasSemIncidente == null ? null : `${tf.diasSemIncidente} dia(s) sem incidente`, `${tf.incidentes ?? 0} incidente(s) viraram lei`].filter(Boolean).join(' · ');
+  $('#side-lbl-tool').textContent = 'Fonte e fórmula';
+  $('#side-tool').textContent = 'office-metrics → company/OFFICE-METRICS.json · xp por status de spec · nível = ⌊√(xp/100)⌋+1 · barra = xp entre o nível atual e o próximo';
+  $('#side-lbl-events').textContent = 'Por agente · nível · xp · specs fechadas/total (ordem das mesas, sem ranking)';
+  $('#side-events').textContent = KNOWN.map(n => {
+    const a = sa[n];
+    return a ? `${n.padEnd(7)} n${a.nivel} · ${String(a.xp).padStart(4)} · ${a.fechadas}/${a.specs}` : `${n.padEnd(7)} —  sem spec própria`;
+  }).join('\n');
+  $('#side-gate').hidden = true;
+  $('#side-inbox-n').hidden = true;
+  $('#side-texto').disabled = true;
+  $('#side-enviar').disabled = true;
+  NOTA_PRESA = false;
+  nota('O placar não recebe recado — clique num agente para escrever.');
+}
+
+// ============ FILA 39: sala do RH — cartões, painel de boletim e feedback ============
+// Cartão por agente da lista dinâmica (AGENTES_RECADO = agents.json, a mesma whitelist do serve.js). Resumo
+// da linha 2 vem do boletim; `n/d` e "sem boletim" são estados ditos, nunca zero. Selo = feedback não lido.
+const RH_ORIGIN = [728, 932], RH_COLS = 3, RH_ROWS = 4, RH_DX = 78, RH_DY = 42;
+const RH_BOX = [720, 900, 960, 1116];             // caixa da tábua na cena (obstáculo: as figuras desviam)
+const BOL_LINHAS = [['gateDePrimeira', 'Gate de 1ª'], ['defeitosConfirmados', 'Defeitos confirmados'], ['incidentes', 'Incidentes'],
+  ['sessoes', 'Sessões'], ['tokensPorEntrega', 'Tokens/entrega'], ['invasoesDeEscopo', 'Invasões de escopo']];
+const BOL_KEYS = { sim: 'sim', nao: 'não', semRegistro: 's/ registro', total: 'total', specsComCampo: 'c/ campo', specsSemCampo: 's/ campo', totalTokens: 'tokens', sessoes: 'sessões' };
+function bolValor(v) {
+  if (v === null || v === undefined) return null;
+  if (typeof v === 'object') return Object.entries(v).map(([k, x]) => `${BOL_KEYS[k] || k} ${typeof x === 'number' ? x.toLocaleString('pt-BR') : x}`).join(' · ');
+  return typeof v === 'number' ? v.toLocaleString('pt-BR') : String(v);
+}
+// resumo curto do cartão: completo → "N def · N inc"; tudo n/d → "n/d · <motivo curto>"; sem entrada → "sem boletim"
+function rhResumo(b) {
+  if (!b) return { txt: 'sem boletim', nd: true };
+  const vals = Object.values(b), todosNd = vals.every(l => l && l.valor === null);
+  if (todosNd) { const m = (b.gateDePrimeira && b.gateDePrimeira.motivoNd) || ''; return { txt: 'n/d · ' + (/spec/i.test(m) ? 'sem spec' : 'sem dado'), nd: true }; }
+  const def = b.defeitosConfirmados && b.defeitosConfirmados.valor, inc = b.incidentes && b.incidentes.valor;
+  const partes = [];
+  if (def && typeof def === 'object') partes.push(`${def.total} def`); else if (typeof def === 'number') partes.push(`${def} def`);
+  if (typeof inc === 'number') partes.push(`${inc} inc`);
+  return { txt: partes.join(' · ') || 'parcial', nd: !partes.length };
+}
+function paintRhCards(data) {
+  const g = $('#rh-cards'); if (!g) return;
+  const bol = (data.boletim && data.boletim.porAgente) || {}, fb = data.feedback || {};
+  const lista = AGENTES_RECADO, max = RH_COLS * RH_ROWS;
+  let out = '';
+  lista.slice(0, max).forEach((a, i) => {
+    const x = RH_ORIGIN[0] + (i % RH_COLS) * RH_DX, y = RH_ORIGIN[1] + Math.floor(i / RH_COLS) * RH_DY;
+    const r = rhResumo(bol[a]), n = fb[a] || 0, nome = a[0].toUpperCase() + a.slice(1);
+    out += `<g class="rh-card${SEL === a && MODE === 'rh' ? ' sel' : ''}" data-rh="${escHtml(a)}" style="--agent:${escHtml(CORES[a] || '#666')}" transform="translate(${x},${y})" role="button" tabindex="0"><title>${escHtml(nome)} · boletim + feedback</title>` +
+      `<rect class="panel rh-paper" width="72" height="36"/><rect class="rh-pin" x="33" y="-3" width="6" height="6"/>` +
+      `<circle cx="10" cy="12" r="3" fill="var(--agent)"/><text class="rh-name" x="17" y="16">${escHtml(nome.length > 8 ? nome.slice(0, 7) + '…' : nome)}</text>` +
+      `<text class="rh-sum${r.nd ? ' nd' : ''}" x="7" y="29">${escHtml(r.txt)}</text>` +
+      (n ? `<g class="rh-badge"><rect x="57" y="-6" width="18" height="13"/><text x="66" y="4">${n > 9 ? '9+' : n}</text></g>` : '') + '</g>';
+  });
+  if (lista.length > max) out += `<text class="rh-hint" x="${RH_ORIGIN[0]}" y="${RH_ORIGIN[1] + RH_ROWS * RH_DY + 8}">+${lista.length - max} sem cartão (tábua cheia)</text>`;
+  // T5 (plausível cosmético): sem agente nenhum, a dica de clique ficaria órfã — diz o estado, nunca convida ao clique no vazio
+  out += `<text class="rh-hint" x="728" y="1108">${lista.length ? "clique no cartão · boletim + feedback" : "nenhum agente ainda — agents/*/AGENT.md"}</text>`;
+  g.innerHTML = out;
+}
+function paintRhPanel() {
+  sideSections(true);
+  const side = $('#side');
+  side.style.setProperty('--agent', CORES[SEL] || 'var(--brass)');
+  $('#side-name').textContent = SEL[0].toUpperCase() + SEL.slice(1);
+  $('#side-call').textContent = CALL[SEL] || '';
+  const v = VIEW.get(SEL);
+  $('#side-sem').className = 'sem ' + ((v && v.sem) || '');
+  $('#side-state').textContent = v ? (v.longo || (v.on ? 'sessão ativa' : 'sem sessão aberta')) : 'sem sessão aberta';
+  $('#side-gate').hidden = true;
+  const B = LAST.boletim || {}, b = (B.porAgente || {})[SEL];
+  $('#side-bol-periodo').textContent = B.periodo && B.periodo.acumuladoDesde ? `desde ${B.periodo.acumuladoDesde}` : '';
+  const list = $('#side-bol-list');
+  if (!b) {
+    // sem entrada: dizer o porquê, nunca linha vazia (risco 3). Duas causas possíveis, cada uma com a sua frase.
+    const porque = B.indisponivel ? B.indisponivel.motivo + (B.indisponivel.comoGerar ? ' — ' + B.indisponivel.comoGerar : '')
+      : 'sem entrada em company/OFFICE-METRICS.json — o worker office-metrics ainda não rodou desde a contratação (roda de madrugada; ou: node workers/office-metrics.js).';
+    list.innerHTML = `<div><b>sem boletim ainda</b><span class="src">${escHtml(porque)}</span></div>`;
+  } else {
+    list.innerHTML = BOL_LINHAS.map(([k, rotulo]) => {
+      const l = b[k] || {}, val = bolValor(l.valor);
+      const corpo = val === null ? `<span class="nd">n/d — ${escHtml(l.motivoNd || 'sem motivo registrado')}</span>` : escHtml(val);
+      return `<div><b>${rotulo}:</b> ${corpo}<span class="src">${escHtml(l.fonte || 'fonte não registrada')}</span></div>`;
+    }).join('');
+  }
+  paintFbHist();
+  const n = (LAST.feedback || {})[SEL] || 0;
+  const badge = $('#side-fb-n'); badge.hidden = !n; badge.textContent = n === 1 ? '1 esperando' : `${n} esperando`;
+  const pode = AGENTES_RECADO.includes(SEL) && !!TOKEN_QG && ONLINE;   // mesma regra do recado: ONLINE entra porque o servidor pode cair depois
+  $('#side-feedback').disabled = !pode;
+  $('#side-fb-enviar').disabled = !pode || !$('#side-feedback').value.trim();
+  if (!pode && !FB_NOTA_PRESA) fbNota(!AGENTES_RECADO.includes(SEL) ? 'Este nome não recebe feedback (não é agente de agents/).' : 'Sem servidor: feedback indisponível. Rode node hub/serve.js.', 'erro');
+  else if (pode && !FB_NOTA_PRESA) fbNotaPadrao();
+}
+// FILA 43: histórico do agente no painel. Recorte do /api/live (os N mais
+// recentes) — o ARQUIVO continua sendo a fonte, e é ele que a retro lê.
+// Toda string vem de arquivo no disco, então TUDO passa por escHtml (achado R9
+// da FILA 39): nome, origem, motivo, texto e caminho de evidência.
+const FB_ORIGEM_ROTULO = { mandato: 'nasceu no mandato', spec: 'nasceu na spec', execucao: 'nasceu na execução', 'lei-que-nao-pegou': 'lei que não pegou' };
+function paintFbHist() {
+  const list = $('#side-fbhist-list'), cab = $('#side-fbhist-n');
+  const h = (LAST.feedbackHist || {})[SEL];
+  if (!h || !h.length) {
+    cab.textContent = '';
+    // vazio tem DOIS motivos e a tela diz qual (mesma regra do boletim, risco 3 da FILA 39)
+    const porque = LAST.feedbackHist ? 'nenhum feedback ainda — o primeiro pode ser deixado abaixo'
+      : 'servidor antigo: /api/live não devolve feedbackHist (reinicie node hub/serve.js)';
+    list.innerHTML = `<div><span class="src">${escHtml(porque)}</span></div>`;
+    return;
+  }
+  cab.textContent = h.omitidos ? `${h.length} de ${h.length + h.omitidos} — o arquivo tem o resto` : `${h.length}`;
+  list.innerHTML = h.slice().reverse().map((l) => {
+    // `forjada` = `(dono · …)` no formato novo, que nenhum caminho legitimo grava.
+    // Aparece como suspeita, nunca como "o dono disse" — e o premio do ataque some.
+    const quem = l.autoria === 'orq' ? 'orquestrador'
+      : l.autoria === 'dono' ? 'dono'
+      : l.forjada ? '<span class="nd">AUTORIA FORJADA — nenhum caminho legítimo grava isto</span>'
+      : 'autoria n/d';
+    const origem = l.origem === 'n/d'
+      ? `<span class="nd">origem n/d — ${escHtml(l.origemMotivo || 'sem motivo registrado')}</span>`
+      : escHtml(FB_ORIGEM_ROTULO[l.origem] || l.origem);
+    let estado;
+    if (l.ratificacao === 'a ratificar') estado = '<b>proposta — ainda não ratificada</b>';
+    // ratificado SEM nivel viola o criterio 12 e nao pode parecer normal: antes o
+    // sufixo era so omitido e a linha passava por ratificacao boa (achado adjacente-1).
+    else if (l.ratificacao === 'ratificado') estado = l.nivel !== 'n/d'
+      ? `ratificado ${escHtml(l.ratificadoEm || '')} · ${escHtml(l.nivel)}`
+      : `ratificado ${escHtml(l.ratificadoEm || '')} · <span class="nd">sem triagem — viola o critério 12</span>`;
+    else if (l.ratificacao === 'riscado') estado = `riscado ${escHtml(l.ratificadoEm || '')}`;
+    else if (l.ratificacao === 'n/a') estado = 'sem ratificação (formato anterior)';
+    else estado = '<span class="nd">ratificação n/d</span>';
+    const dia = String(l.iso || '').slice(0, 10);
+    const ev = l.ev ? ` · <span class="mono">${escHtml(l.ev)}</span>` : '';
+    return `<div><b>${l.lido ? '[x]' : '[ ]'} ${escHtml(dia)}</b> ${escHtml(l.texto)}` +
+      `<span class="src">${l.forjada ? quem : escHtml(quem)} · ${origem} · ${estado}${ev}</span></div>`;
+  }).join('');
+}
+let FB_NOTA_PRESA = false;
+function fbNota(txt, tipo) { const el = $('#side-fb-nota'); el.textContent = txt; el.className = 'nota' + (tipo ? ' ' + tipo : ''); }
+function fbNotaPadrao() { FB_NOTA_PRESA = false; fbNota('Assíncrono: lido no próximo /arvys:open. Feedback é durável — a retro lê, nunca é apagado.'); }
+$('#side-feedback').addEventListener('input', () => {
+  const v = $('#side-feedback').value;
+  $('#side-fb-cont').textContent = `${v.length}/1000`;
+  $('#side-fb-enviar').disabled = !v.trim() || !TOKEN_QG || !AGENTES_RECADO.includes(SEL);
+});
+$('#side-fb-enviar').onclick = async () => {
+  const texto = $('#side-feedback').value.trim();
+  if (!texto || !SEL) return;
+  $('#side-fb-enviar').disabled = true;
+  FB_NOTA_PRESA = true;
+  fbNota('enviando…');
+  try {
+    const r = await fetch('/api/feedback', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ agent: SEL, texto, token: TOKEN_QG }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.motivo || j.erro || `HTTP ${r.status}`);
+    $('#side-feedback').value = '';
+    $('#side-fb-cont').textContent = '0/1000';
+    if (j.feedback) { LAST.feedback = j.feedback; if (j.feedbackHist) LAST.feedbackHist = j.feedbackHist; paintRhCards(LAST); paintPanel(LAST); }   // selo, contagem e histórico já, sem esperar o tick
+    fbNota(`Feedback guardado. ${SEL} lê no próximo /arvys:open.`, 'ok');                   // repintar não pode engolir a confirmação
+    setTimeout(fbNotaPadrao, 6000);
+  } catch (e) {
+    fbNota('Não consegui guardar: ' + e.message + '. O texto continua no campo.', 'erro');   // erro VISÍVEL, texto preservado
+    $('#side-fb-enviar').disabled = false;
+    setTimeout(fbNotaPadrao, 8000);
+  }
+};
+
+// ---- onda 5.3: enviar recado ----
+// A tela ESCREVE aqui — a única escrita do QG, e só em agents/<nome>/INBOX.md.
+// O token vem do <meta> injetado pelo servidor: quem não recebeu esta página do
+// próprio servidor não consegue escrever (ver specs/2026-09-qg-recado/).
+let AGENTES_RECADO = [];
+let AGENTS_META = {}; // name -> {name,callsign,vibe,emoji,color,hasArt} — de /live/agents.json
+const TOKEN_QG = (document.querySelector('meta[name="qg-token"]') || {}).content || '';
+let NOTA_PRESA = false;
+function nota(txt, tipo) {
+  const el = $('#side-nota');
+  el.textContent = txt;
+  el.className = 'nota' + (tipo ? ' ' + tipo : '');
+}
+function notaPadrao() {
+  NOTA_PRESA = false;
+  nota('Assíncrono: ele lê no próximo /arvys:open.');
+}
+$('#side-texto').addEventListener('input', () => {
+  const v = $('#side-texto').value;
+  $('#side-cont').textContent = `${v.length}/500`;
+  $('#side-enviar').disabled = !v.trim() || !TOKEN_QG || !AGENTES_RECADO.includes(SEL);
+});
+$('#side-enviar').onclick = async () => {
+  const texto = $('#side-texto').value.trim();
+  if (!texto || !SEL) return;
+  $('#side-enviar').disabled = true;
+  NOTA_PRESA = true;
+  nota('enviando…');
+  try {
+    const r = await fetch('/api/recado', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ agent: SEL, texto, token: TOKEN_QG }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.motivo || j.erro || `HTTP ${r.status}`);
+    $('#side-texto').value = '';
+    $('#side-cont').textContent = '0/500';
+    nota(`Recado guardado. ${SEL} lê no próximo /arvys:open.`, 'ok');
+    if (j.inbox) { LAST.inbox = j.inbox; paintPanel(LAST); }   // contador e selo já, sem esperar o tick de 2 s
+    nota(`Recado guardado. ${SEL} lê no próximo /arvys:open.`, 'ok');   // repintar não pode engolir a confirmação
+    setTimeout(notaPadrao, 6000);
+  } catch (e) {
+    // erro VISÍVEL: o dono não pode achar que enviou quando não enviou
+    nota('Não consegui guardar: ' + e.message + '. O recado continua no campo.', 'erro');
+    $('#side-enviar').disabled = false;
+    // sem isto a mensagem de erro fica presa mesmo depois do servidor voltar,
+    // porque paintPanel respeita NOTA_PRESA (achado R5 do reviewer)
+    setTimeout(notaPadrao, 8000);
+  }
+};
+$('#side-close').onclick = closePanel;
+addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  // Esc no campo com recado escrito só tira o foco: fechar apagaria o texto do dono
+  if (e.target === $('#side-texto') && $('#side-texto').value.trim()) { $('#side-texto').blur(); return; }
+  if (e.target === $('#side-feedback') && $('#side-feedback').value.trim()) { $('#side-feedback').blur(); return; }
+  closePanel();
+});
+document.querySelector('.plan').addEventListener('click', e => {
+  if (e.target.closest('#placar')) return openPanel('placar');   // FILA 40: clique no placar expande no painel lateral
+  const c = e.target.closest('.rh-card'); if (c) return openPanel(c.dataset.rh, 'rh');   // FILA 39: cartão do RH → boletim + feedback
+  const d = e.target.closest('[data-desk],[data-desk-front]');
+  if (d) return openPanel(d.dataset.desk || d.dataset.deskFront);
+  const f = e.target.closest('.fig');
+  if (f && f.dataset.fig) {
+    const nome = f.dataset.fig.replace(/^sub:/, '').split('#')[0];
+    if (VIEW.has(nome)) {
+      // spec 2026-09-qg-plataforma (T6): dentro do QG, clicar no personagem tambem
+      // abre a ficha dele na plataforma. Alvo = a MESMA origem, nunca "*".
+      // T11: em SEGUNDA JANELA nao ha pai — quem escuta e o `window.opener`,
+      // o shell que abriu esta janela. Mesma mensagem, mesma checagem de origem.
+      const _alvoQG = window.self !== window.top ? window.parent : (window.opener || null);
+      if (_alvoQG && /^[a-z0-9-]{1,40}$/.test(nome)) {
+        try { _alvoQG.postMessage({ type: 'arvys:agente', nome }, location.origin); } catch (err) { /* alvo de outra origem ou ja fechado: seguir */ }
+      }
+      return openPanel(nome);
+    }
+  }
+  closePanel();                                    // clique fora de agente/mesa fecha
+});
+let ONLINE = false;
+function status(ok) {
+  ONLINE = ok;
+  if (!ok && SEL) paintPanel(LAST);                // servidor caiu com painel aberto: desabilita o campo na hora
+  $('#offline').hidden = ok;
+  $('#st-dot').className = 'sem ' + (ok ? 'on' : 'bad');
+  $('#st-txt').textContent = ok ? 'ao vivo · ' + new Date().toLocaleTimeString('pt-BR') : 'sem servidor';
+}
+async function tick() {
+  try { const r = await fetch('/api/live', { cache: 'no-store' }); if (!r.ok) throw 0; const data = await r.json(); ONLINE = true; render(data); status(true); }   // FILA 39: ONLINE antes do render — senão a 1ª repintura após o servidor voltar ainda desabilita o campo (um tick de atraso)
+  catch (e) { status(false); }
+}
+$('#theme').onclick = () => { const r = document.documentElement, d = r.dataset.theme === 'dark' || (!r.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches); r.dataset.theme = d ? 'light' : 'dark'; };
+
+// ============ CENÁRIO EM TILES (spec 2026-09-pixel-art, onda 2) ============
+// Coordenadas de ARTE (1 px = 1 px da folha); o <g id="px-scene"> tem scale(2). Catálogo herdado do
+// quadro da onda 1 (specs/2026-09-pixel-art/evidence/quadro.html): (folha, x, y, w, h) em px da folha.
+// Tudo em hub/live/tiles/ é cópia sem alteração das folhas CC0; o recorte é o viewBox (R5, CREDITOS.md).
+const SHEETS = {
+  house: ['/live/tiles/int-tiles-house.png', 512, 512],
+  doors: ['/live/tiles/int-doors.png', 1344, 128],
+  windows: ['/live/tiles/int-windows.png', 896, 64],
+  kitchen1: ['/live/tiles/int-kitchen1.png', 576, 96],
+  living: ['/live/tiles/int-livingroom.png', 192, 96],
+  tv: ['/live/tiles/int-tv.png', 256, 96],
+  cupboard: ['/live/tiles/int-cupboard.png', 576, 96],
+  lights: ['/live/tiles/int-lights.png', 384, 64],
+  flowers: ['/live/tiles/int-flowers.png', 384, 96],
+  carpet: ['/live/tiles/int-carpet.png', 320, 64],
+  paintings: ['/live/tiles/int-paintings.png', 320, 32],
+  hosp: ['/live/tiles/int-hospital-misc.png', 3072, 64],
+};
+const T = {
+  // piso (32x32, repete) e faces de parede em fatias de 16 (topo com friso · meio · base com rodapé)
+  'floor-planks':  ['house', 96, 128, 32, 32],
+  'floor-parquet': ['house', 32, 128, 32, 32],
+  'floor-checker': ['house', 144, 144, 16, 16],
+  'wallw-top':  ['house', 64, 64, 16, 16],  'wallw-mid':  ['house', 64, 80, 16, 16],  'wallw-base':  ['house', 64, 112, 16, 16],
+  'walln-top':  ['house', 128, 64, 16, 16], 'walln-mid':  ['house', 128, 80, 16, 16], 'walln-base':  ['house', 128, 112, 16, 16],
+  // contorno de sala (viga laranja vista de cima): faixa na metade de baixo do tile; poste à esquerda (L) ou à direita (R)
+  'wt-h':    ['house', 32, 224, 16, 16],
+  'wt-vL':   ['house', 16, 192, 16, 16],
+  'wt-vR':   ['house', 144, 192, 16, 16],
+  'wt-tlL':  ['house', 64, 272, 16, 16],   // ┌ poste à esquerda
+  'wt-trR':  ['house', 112, 272, 16, 16],  // ┐ poste à direita
+  // carpete verde 9-slice (cruz da folha)
+  'cp-tl': ['house', 224, 288, 16, 16], 'cp-t': ['house', 240, 288, 16, 16], 'cp-tr': ['house', 256, 288, 16, 16],
+  'cp-l':  ['house', 224, 304, 16, 16], 'cp-c': ['house', 240, 304, 16, 16], 'cp-r':  ['house', 256, 304, 16, 16],
+  'cp-bl': ['house', 224, 368, 16, 16], 'cp-b': ['house', 240, 368, 16, 16], 'cp-br': ['house', 256, 368, 16, 16],
+  // móveis (caixa exata)
+  'door-wood':   ['doors', 895, 15, 34, 49],
+  'window-wood': ['windows', 14, 15, 36, 40],
+  'chair-front': ['kitchen1', 42, 7, 12, 25],
+  'chair-back':  ['kitchen1', 138, 12, 12, 20],
+  'table-wood':  ['living', 25, 15, 46, 30],
+  'tv-on':       ['tv', 84, 0, 24, 29],
+  'monitor':     ['hosp', 1075, 24, 25, 17],
+  'bookshelf':   ['cupboard', 204, 16, 40, 52],
+  'cabinet':     ['cupboard', 78, 18, 37, 30],
+  'lamp-table':  ['lights', 24, 13, 16, 19],
+  'lamp-floor':  ['lights', 152, 0, 16, 32],
+  'plant-big':   ['flowers', 22, 3, 20, 43],
+  'plant-small': ['flowers', 153, 22, 14, 24],
+  'painting-1':  ['paintings', 9, 7, 14, 17],
+  'painting-2':  ['paintings', 199, 7, 18, 21],
+  'cooler':      ['hosp', 2234, 28, 12, 18],
+  'seat-blue':   ['hosp', 54, 18, 20, 30],
+};
+// um recorte da folha, colocado em (X,Y) px de arte
+function tile(name, X, Y, extra = '') {
+  const [sh, x, y, w, h] = T[name]; const [href, W, H] = SHEETS[sh];
+  return `<svg x="${X}" y="${Y}" width="${w}" height="${h}" viewBox="${x} ${y} ${w} ${h}" ${extra}><image href="${href}" width="${W}" height="${H}"/></svg>`;
+}
+// tile espelhado na horizontal (móvel virado para o outro lado): mesma folha, mesmo recorte
+function tileFlip(name, X, Y) {
+  const w = T[name][3];
+  return `<g transform="translate(${2 * X + w},0) scale(-1,1)">${tile(name, X, Y)}</g>`;
+}
+// padrão repetido (piso, viga, poste, face de parede): 1 elemento por fileira em vez de 1 por tile
+function pat(id, name, x = 0, y = 0) {
+  const [, , , w, h] = T[name];
+  return `<pattern id="${id}" patternUnits="userSpaceOnUse" x="${x}" y="${y}" width="${w}" height="${h}">${tile(name, 0, 0)}</pattern>`;
+}
+const fillPat = (id, X, Y, W, H) => `<rect x="${X}" y="${Y}" width="${W}" height="${H}" fill="url(#${id})"/>`;// viga horizontal por trechos, pulando os tiles das PORTAS (x do tile de 16 a pular)
+function beamH(Y, x0, x1, gaps = []) {
+  let s = '', a = x0;
+  for (const g of [...gaps].sort((p, q) => p - q)) { if (g > a) s += fillPat('pt-wth', a, Y, g - a, 16); a = g + 16; }
+  if (x1 > a) s += fillPat('pt-wth', a, Y, x1 - a, 16);
+  return s;
+}
+function postV(id, X, y0, y1, gaps = []) {
+  let s = '', a = y0;
+  for (const g of [...gaps].sort((p, q) => p - q)) { if (g > a) s += fillPat(id, X, a, 16, g - a); a = g + 16; }
+  if (y1 > a) s += fillPat(id, X, a, 16, y1 - a);
+  return s;
+}
+// face de parede: branca (.wl, tema claro) / azul-marinho (.wd, tema escuro); 2 fileiras (interna) ou 3 (externa, cabe a porta)
+function wallRun(X, Y, n, rows) {
+  let s = '';
+  for (const [cls, k] of [['wl', 'w'], ['wd', 'n']]) {
+    s += `<g class="${cls}">` + fillPat(`pw-${k}-top`, X, Y, n * 16, 16)
+      + (rows === 3 ? fillPat(`pw-${k}-mid`, X, Y + 16, n * 16, 16) : '')
+      + fillPat(`pw-${k}-base`, X, Y + (rows - 1) * 16, n * 16, 16) + '</g>';
+  }
+  return s;
+}
+function carpet(X, Y, cols, rows) {   // 9-slice em tiles de 16
+  let s = '';
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+    const v = r === 0 ? 't' : r === rows - 1 ? 'b' : '', h = c === 0 ? 'l' : c === cols - 1 ? 'r' : '';
+    s += tile('cp-' + ((v + h) || 'c'), X + c * 16, Y + r * 16);
+  }
+  return s;
+}
+// placa de madeira com o nome da sala (arte nossa); X é o centro
+function plaque(X, Y, label) {
+  const w = label.length * 4 + 8;
+  return `<g class="px"><rect x="${X - w / 2}" y="${Y}" width="${w}" height="11" fill="#D9A066" stroke="#5C3A12" stroke-width="1"/><rect x="${X - w / 2 + 1}" y="${Y + 1}" width="${w - 2}" height="1" fill="#F2C48A"/><text class="plate" x="${X}" y="${Y + 8}">${escHtml(label)}</text></g>`;
+}
+// móveis que o pack não tem (arte nossa, rects de 1 px)
+const whiteboard = (X, Y) => `<g class="px"><rect x="${X}" y="${Y}" width="56" height="30" fill="#F7F5EE" stroke="#8A6D1D" stroke-width="1"/><rect x="${X + 6}" y="${Y + 7}" width="28" height="1" fill="#8B8C85"/><rect x="${X + 6}" y="${Y + 13}" width="39" height="1" fill="#8B8C85"/><rect x="${X + 6}" y="${Y + 19}" width="20" height="1" fill="#8B8C85"/><rect x="${X + 42}" y="${Y + 23}" width="10" height="2" fill="#E8590C"/></g>`;
+// mesa de sinuca (era um pebolim com 4 hastes que o dono leu como "negócio verde com 4 listras", 05/09):
+// moldura de madeira, feltro, 6 caçapas, bolas e taco — vista de cima
+const pebolim = (X, Y) => `<g class="px">` +
+  `<rect x="${X + 2}" y="${Y + 26}" width="3" height="6" fill="#5C3A12"/><rect x="${X + 59}" y="${Y + 26}" width="3" height="6" fill="#5C3A12"/>` +
+  `<rect x="${X}" y="${Y + 4}" width="64" height="22" fill="#8A5A2B"/><rect x="${X}" y="${Y + 4}" width="64" height="1" fill="#A86E38"/>` +
+  `<rect x="${X + 4}" y="${Y + 8}" width="56" height="14" fill="#2F7A3B"/>` +
+  `<rect x="${X + 4}" y="${Y + 8}" width="2" height="2" fill="#1A1B1E"/><rect x="${X + 58}" y="${Y + 8}" width="2" height="2" fill="#1A1B1E"/>` +
+  `<rect x="${X + 4}" y="${Y + 20}" width="2" height="2" fill="#1A1B1E"/><rect x="${X + 58}" y="${Y + 20}" width="2" height="2" fill="#1A1B1E"/>` +
+  `<rect x="${X + 31}" y="${Y + 7}" width="2" height="2" fill="#1A1B1E"/><rect x="${X + 31}" y="${Y + 21}" width="2" height="2" fill="#1A1B1E"/>` +
+  `<rect x="${X + 16}" y="${Y + 14}" width="2" height="2" fill="#FFFFFF"/><rect x="${X + 8}" y="${Y + 15}" width="8" height="1" fill="#C89B5A"/>` +
+  `<rect x="${X + 40}" y="${Y + 12}" width="2" height="2" fill="#B02A2A"/><rect x="${X + 43}" y="${Y + 14}" width="2" height="2" fill="#F5A623"/>` +
+  `<rect x="${X + 40}" y="${Y + 16}" width="2" height="2" fill="#1971C2"/><rect x="${X + 46}" y="${Y + 12}" width="2" height="2" fill="#1A1B1E"/><rect x="${X + 46}" y="${Y + 16}" width="2" height="2" fill="#9C36B5"/></g>`;
+const fliperama = (X, Y) => `<g class="px"><rect x="${X}" y="${Y}" width="24" height="36" fill="#3B3B3B"/><rect x="${X + 2}" y="${Y + 2}" width="20" height="12" fill="#0E1013"/><rect x="${X + 4}" y="${Y + 4}" width="16" height="8" fill="#9C36B5" opacity=".6"/><g class="arcade-game"><rect class="ball" x="${X + 6}" y="${Y + 5}" width="2" height="2" fill="#FFFFFF"/><rect class="pad" x="${X + 5}" y="${Y + 11}" width="6" height="1" fill="#51CF66"/><rect x="${X + 4}" y="${Y + 4}" width="1" height="1" fill="#F5A623"/><rect x="${X + 19}" y="${Y + 4}" width="1" height="1" fill="#F5A623"/></g><rect x="${X + 2}" y="${Y + 16}" width="20" height="5" fill="#6B6B6B"/><g class="arcade"><rect x="${X + 5}" y="${Y + 17}" width="2" height="2" fill="#B02A2A"/><rect x="${X + 11}" y="${Y + 17}" width="2" height="2" fill="#D9770B"/><rect x="${X + 17}" y="${Y + 17}" width="2" height="2" fill="#2F9E44"/></g><rect x="${X + 2}" y="${Y + 30}" width="20" height="4" fill="#2A2A2A"/></g>`;
+const dardos = (X, Y) => `<g class="px"><rect x="${X + 11}" y="${Y + 22}" width="2" height="14" fill="#5C3A12"/><rect x="${X + 2}" y="${Y}" width="20" height="20" fill="#F2EFE6"/><rect x="${X + 5}" y="${Y + 3}" width="14" height="14" fill="#B02A2A"/><rect x="${X + 9}" y="${Y + 7}" width="6" height="6" fill="#F2EFE6"/><rect x="${X + 11}" y="${Y + 9}" width="2" height="2" fill="#B02A2A"/><rect x="${X + 14}" y="${Y + 6}" width="1" height="4" fill="#1A1B1E"/></g>`;
+// FILA 39: mural do RH — tábua de cortiça de pé (moldura de madeira, 2 pés), 120×60 px de arte. Os cartões
+// (um por agente) ficam em coordenadas de CENA no <g id="rh-cards">, por cima desta tábua (texto nítido).
+const rhBoard = (X, Y, W = 170, H = 80) => `<g class="px"><rect x="${X + 8}" y="${Y + H - 2}" width="4" height="6" fill="#5C3A12"/><rect x="${X + W - 12}" y="${Y + H - 2}" width="4" height="6" fill="#5C3A12"/>` +
+  `<rect x="${X}" y="${Y}" width="${W}" height="${H}" fill="#8A5A2B"/><rect x="${X}" y="${Y}" width="${W}" height="1" fill="#A86E38"/><rect x="${X}" y="${Y + H - 1}" width="${W}" height="1" fill="#5C3A12"/>` +
+  `<rect x="${X + 3}" y="${Y + 3}" width="${W - 6}" height="${H - 6}" fill="var(--cork)"/></g>`;
+const cafe = (X, Y) => `<g class="px"><rect x="${X}" y="${Y}" width="12" height="12" fill="#3A3D44"/><rect x="${X + 2}" y="${Y + 2}" width="8" height="3" fill="#BFDCEA"/><rect x="${X + 4}" y="${Y + 8}" width="4" height="3" fill="#F4F3EE"/><rect x="${X + 9}" y="${Y + 6}" width="1" height="1" fill="#F5A623"/></g><g transform="translate(${X + 5},${Y + 8})"><path class="vapor v1" d="M0 0c-1-1.5 1-2.5 0-4"/><path class="vapor v2" d="M2 0c-1-1.5 1-2.5 0-4"/></g>`;
+
+// ---- identidade do genérico: cor + emoji do frontmatter; pele e cabelo derivados por hash do SLUG (id que já existe,
+//      nada de campo novo nem arquivo) — recolorir o agente não troca a pessoa. Pool de cabelo exclui 1 (branco, Arvys) e 6 (preto, Forge).
+const HAIR_POOL = [0, 2, 3, 4, 5, 7];
+function hash(str) { let h = 0x811c9dc5; for (const ch of str) { h ^= ch.codePointAt(0); h = Math.imul(h, 0x01000193) >>> 0; } return h; }
+function look(slug) { const h = hash(slug); return { skin: h % 6, hair: HAIR_POOL[(h >>> 8) % HAIR_POOL.length] }; }
+// clamp da luminosidade SÓ da tinta (HSL, L em [0.30, 0.72]): #1B1B1B vira cinza-escuro com sombreado, #FFFFFF vira cinza-claro
+function clampL(hex, lo = 0.30, hi = 0.72) {
+  const n = parseInt(hex.slice(1), 16), r = (n >> 16 & 255) / 255, g = (n >> 8 & 255) / 255, b = (n & 255) / 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b); let h = 0, sat = 0, l = (max + min) / 2;
+  if (max !== min) { const d = max - min; sat = l > .5 ? d / (2 - max - min) : d / (max + min);
+    h = max === r ? (g - b) / d + (g < b ? 6 : 0) : max === g ? (b - r) / d + 2 : (r - g) / d + 4; h /= 6; }
+  l = Math.min(hi, Math.max(lo, l));
+  const f = (p, q, t) => { t = (t + 1) % 1; return t < 1 / 6 ? p + (q - p) * 6 * t : t < .5 ? q : t < 2 / 3 ? p + (q - p) * (2 / 3 - t) * 6 : p; };
+  const q = l < .5 ? l * (1 + sat) : l + sat - l * sat, p = 2 * l - q;
+  const to = v => Math.round(v * 255).toString(16).padStart(2, '0');
+  return '#' + to(f(p, q, h + 1 / 3)) + to(f(p, q, h)) + to(f(p, q, h - 1 / 3));
+}
+
+// ---- mesas. (cx,cy) = centro do sprite na CENA (é o que HOME/CLASSIC_HOME guardam). A mesa fica na
+//      camada da FRENTE (a pessoa senta atrás dela); cadeira, aro, placa e texto ficam atrás.
+//      O grupo da frente leva data-desk-front (não data-desk: o motor conta e consulta [data-desk] por nome).
+function deskBlock(name, color, callsign, vibe, [cx, cy]) {
+  const X = cx / 2 - 16, Y = cy / 2 - 16, c = escHtml(color), n = escHtml(name);
+  const back = `<g data-desk="${n}" style="--agent:${c}">` +
+    `<rect class="desk" x="${cx - 52}" y="${cy - 40}" width="292" height="116"/>` +
+    `<g transform="scale(2)">${tile('chair-front', X + 10, Y - 3)}</g>` +
+    `<foreignObject x="${cx + 44}" y="${cy - 40}" width="176" height="26"><div class="fo plaque" xmlns="http://www.w3.org/1999/xhtml"><div class="name"><b>${escHtml(callsign)}</b><span class="call">${escHtml(vibe)}</span><span class="state"><i class="sem"></i></span></div></div></foreignObject>` +
+    `<g class="xpbar" data-xp="${n}" style="display:none"><rect x="${cx + 44}" y="${cy - 12}" width="176" height="6" fill="#1A1B1E"/><rect class="xp-fill" x="${cx + 45}" y="${cy - 11}" width="0" height="4" fill="${c}"/></g>` +   // FILA 40: barra de XP sob a plaquinha (preenchida por paintXpBars)
+    `<text class="task" x="${cx + 46}" y="${cy + 10}"></text></g>`;   // bilhete sobre a mesa: à direita do monitor, acima do tampo
+  const front = `<g data-desk-front="${n}" style="--agent:${c}" transform="scale(2)">${tile('table-wood', X - 4, Y + 26)}${tile('lamp-table', X - 1, Y + 18)}${tile('monitor', X + 18, Y + 20)}<rect class="glow px" x="${X + 20}" y="${Y + 21}" width="21" height="12"/></g>`;   // P1: abajur EM CIMA do tampo (era X-8, 4 px fora)
+  return { back, front };
+}
+function subBlock(name, label, [cx, cy]) {   // mesa pequena do anexo: mesa mais alta (Y+22) para não encostar na viga do descanso
+  const X = cx / 2 - 16, Y = cy / 2 - 16;
+  const back = `<g data-desk="${name}" style="--agent:var(--idle)"><rect class="desk" x="${cx - 46}" y="${cy - 36}" width="170" height="100"/>` +
+    `<g transform="scale(2)">${tile('chair-front', X + 10, Y - 3)}${plaque(cx / 2 + 41, Y + 2, label)}</g><text class="task" x="${cx + 58}" y="${cy + 6}"></text></g>`;
+  const front = `<g data-desk-front="${name}" style="--agent:var(--idle)" transform="scale(2)">${tile('table-wood', X - 4, Y + 22)}${tile('monitor', X + 18, Y + 16)}<rect class="glow px" x="${X + 20}" y="${Y + 17}" width="21" height="12"/></g>`;
+  return { back, front };
+}
+
+function buildScene() {
+  const S = [], D = [], F = [];
+  S.push('<defs>' + pat('pf-planks', 'floor-planks') + pat('pf-parquet', 'floor-parquet') + pat('pf-checker', 'floor-checker')    + pat('pt-wth', 'wt-h') + pat('pt-wtl', 'wt-vL') + pat('pt-wtr', 'wt-vR', 484, 0)
+    + ['w', 'n'].map(k => ['top', 'mid', 'base'].map(r => pat(`pw-${k}-${r}`, `wall${k}-${r}`)).join('')).join('') + '</defs>');
+  // pisos (o piso passa por baixo da metade transparente das vigas; x 8-368 esquerda, 376-492 direita, entre os postes)
+  S.push(fillPat('pf-parquet', 8, 48, 360, 40), fillPat('pf-checker', 376, 48, 116, 40),      // reunião · recepção
+    fillPat('pf-planks', 8, 88, 360, 192), fillPat('pf-checker', 376, 88, 116, 192),           // trabalho · balcão
+    fillPat('pf-planks', 368, 144, 8, 32),                                                     // vão da porta no poste
+    fillPat('pf-planks', 8, 280, 484, 64), fillPat('pf-parquet', 8, 344, 484, 72));           // anexo · descanso
+  // faces de parede: externa (3 fileiras, cabe a porta da rua) e a interna da 2ª fileira de salas
+  S.push(wallRun(16, 0, 30, 3), wallRun(16, 80, 30, 2));
+  // na parede: janelas, quadro branco, porta da rua, placas das salas, estante, quadros
+  S.push(whiteboard(300, 10), plaque(118, 34, 'REUNIÃO · RETRO'),
+    plaque(402, 34, 'RECEPÇÃO'),   // P3: porta à direita da placa (era 424, a placa cobria a porta). A porta em si é desenhada DEPOIS das vigas (FILA 39, L0: a viga do topo cortava a porta)
+    plaque(186, 98, 'TRABALHO'), tile('painting-1', 348, 96),                       // placa entre os aros do Forge (até 326) e do Deal (de 418)
+    plaque(400, 98, 'BALCÃO'), tile('bookshelf', 444, 92));
+  // vigas e postes por cima das faces; vãos = portas (a geometria espelha SALAS/PORTAS)
+  S.push(tile('wt-tlL', 0, 0), beamH(0, 16, 484), tile('wt-trR', 484, 0),
+    postV('pt-wtl', 0, 16, 416), postV('pt-wtr', 484, 16, 416),
+    postV('pt-wtl', 368, 16, 80), postV('pt-wtl', 368, 96, 272, [144, 160]),
+    beamH(80, 16, 484), beamH(272, 16, 484, [304, 432]), beamH(336, 16, 484, [304]));
+  // porta da rua e janelas por cima da viga de contorno: a viga passa SOB elas, não cortando-as (dono, 05/09, rodadas 1 e 2)
+  S.push(tile('window-wood', 40, 4), tile('window-wood', 250, 4), tile('door-wood', 444, 0));
+  // móveis de fundo (atrás das pessoas)
+  // P2: mesa de reunião dupla (92 px) com 4 cadeiras encostadas ATRÁS (pé da cadeira termina 2 px dentro do tampo, sentado)
+  S.push(tile('lamp-floor', 20, 50), tile('table-wood', 150, 50), tile('table-wood', 196, 50),
+    tile('chair-back', 158, 32), tile('chair-back', 180, 32), tile('chair-back', 202, 32), tile('chair-back', 224, 32), tile('plant-big', 346, 40),
+    carpet(416, 48, 3, 2), tileFlip('seat-blue', 386, 50), tile('plant-small', 470, 52),   // poltrona da recepção olha para a porta da rua (dono, 05/09: "virado pro lado errado")
+    tile('plant-small', 354, 116), tile('cooler', 22, 158),
+    carpet(352, 288, 8, 3), plaque(280, 290, 'ANEXO'), plaque(416, 322, 'SEM /ARVYS:OPEN'),   // P6: dentro do tapete (326 cruzava a borda). FILA 39: o mural do RH fica junto dos contratados (extendRoomFor), gate rodada 1
+    pebolim(28, 352), tile('plant-big', 98, 350), fliperama(150, 350), dardos(194, 350), tile('seat-blue', 214, 352), tile('tv-on', 262, 350), tile('cabinet', 322, 354), cafe(328, 352), tile('cooler', 364, 358));
+  // VAGA (Fábrica): cadeira vazia com placa, abaixo do Arvys
+  S.push(tile('chair-front', 182, 236), plaque(188, 254, 'VAGA'));
+  // balcão dos gates: a fila fica ATRÁS dele
+  F.push(`<g transform="scale(2)">${tile('table-wood', 388, 128)}${tile('table-wood', 434, 128)}</g>`);
+  // mesas: 4 clássicos (CLASSIC_HOME, desenhadas aqui como sempre foram à mão), Arvys, anexo
+  for (const [n, pos] of Object.entries(CLASSIC_HOME)) {
+    const b = deskBlock(n, CORES[n], n[0].toUpperCase() + n.slice(1), CALL[n], pos); D.push(b.back); F.push(b.front);
+  }
+  const AX = 370 / 2 - 16, AY = 332 / 2 - 16;
+  D.push(`<g data-desk="arvys" style="--agent:var(--brass)"><rect class="desk" x="316" y="292" width="108" height="162"/>` +
+    `<g transform="scale(2)">${tile('chair-front', AX + 10, AY - 3)}${plaque(185, 206, 'ARVYS')}</g><text class="task" x="370" y="448" text-anchor="middle"></text></g>`);
+  F.push(`<g data-desk-front="arvys" transform="scale(2)">${tile('table-wood', AX - 4, AY + 26)}${tile('lamp-table', AX + 25, AY + 20)}</g>`);   // abajur dentro do tampo (AX-4..AX+42); em AX+34 saía 8 px pela direita (dono, 05/09)
+  for (const [n, pos] of Object.entries(SUBDESK)) { const b = subBlock(n, n.toUpperCase(), pos); D.push(b.back); F.push(b.front); }
+  $('#px-scene').innerHTML = S.join('');
+  $('#px-desks').innerHTML = D.join('');
+  $('#px-front').innerHTML = F.join('');
+}
+
+// ---- A5 (review 2026-09-04): agentes só do agents.json, fail-closed ----
+// /live/agents.json vem de hub/build.js (lido de agents/*/AGENT.md). Sem
+// servidor, ou sem o arquivo, o fetch falha e a cena NÃO desenha ninguém —
+// nunca finge os 4 clássicos que talvez nem existam neste projeto.
+const CLASSIC = ['forge', 'deal', 'echo', 'scout'];
+const escHtml = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+// mesa de contratado (agente fora dos 4 clássicos): a MESMA mesa de pixel dos clássicos, na sala
+// "contratados" que extendRoomFor() abre abaixo do descanso. Nenhum arquivo de arte por agente (R2).
+function buildGenericDesk(a, col, row) {
+  const cx = 86 + col * 320, cy = 928 + row * 130;
+  const b = deskBlock(a.name, a.color || '#666', a.callsign, a.vibe, [cx, cy]);
+  $('#px-desks').insertAdjacentHTML('beforeend', b.back);
+  $('#px-front').insertAdjacentHTML('beforeend', b.front);
+  return [cx, cy]; // HOME: centro do sprite, como CLASSIC_HOME
+}
+
+// estica a planta pra baixo pra caber a sala dos contratados — sem isso, os agentes novos ficariam
+// fora do viewBox (nunca sobrepõe a sala existente; os 4 clássicos continuam pixel-idênticos).
+// Geometria (cena): viga em 832 com vão da porta em x 608-640, parede 832-896, 1ª fileira de mesas em y 928.
+let RH_ABERTO = false;
+function extendRoomFor(rows, temContratados = true) {
+  RH_ABERTO = true;
+  // FILA 39: o mural do RH fica À DIREITA das mesas (mesma faixa da 1ª fileira; a sala passou a 2 colunas de
+  // mesa para abrir o terço direito). A tábua termina em y 1116 de cena; a sala tem de ir pelo menos até 1130.
+  const addH = Math.max(190 + (rows - 1) * 130, 300), newH = 830 + addH;
+  const svg = document.querySelector('svg.plan');
+  svg.setAttribute('viewBox', `0 0 1000 ${newH}`);
+  const clipRect = document.querySelector('#room rect'); if (clipRect) clipRect.setAttribute('height', newH);
+  const floor = document.querySelector('.floor'); if (floor) floor.setAttribute('height', newH);
+  const a = newH / 2;   // fim, em arte
+  $('#px-scene').insertAdjacentHTML('beforeend',
+    fillPat('pf-planks', 8, 416, 484, a - 416) + wallRun(16, 416, 30, 2) + beamH(416, 16, 484, [304]) +
+    postV('pt-wtl', 0, 416, a) + postV('pt-wtr', 484, 416, a) + (temContratados ? plaque(38, 434, 'CONTRATADOS') : plaque(38, 434, 'RH')));   // canto esquerdo: livre do crachá e da placa da 1ª mesa
+  // FILA 39: mural do RH — tábua de cortiça (170×80 de arte = 4 colunas × 3 fileiras de cartões de 36 px) logo
+  // abaixo da última fileira de mesas dos contratados; desce junto quando entram fileiras novas.
+  // tábua 120×108 de arte (x 360-480, y 450-558) = 3 colunas × 4 fileiras de cartões de 36 px (12 vagas)
+  $('#px-scene').insertAdjacentHTML('beforeend', rhBoard(360, 450, 120, 108) + plaque(420, 452, 'RH · BOLETIM'));
+}
+
+function applyAgentsJson(list) {
+  for (const a of list) AGENTS_META[a.name] = a;
+  // A5: a LISTA vem inteira do JSON — clássico presente usa a mesa desenhada
+  // à mão (CLASSIC_HOME); qualquer outro nome (clássico ausente ou agente
+  // novo) ganha mesa genérica. Quem não aparece no JSON não é desenhado.
+  const classics = list.filter(a => CLASSIC.includes(a.name));
+  const extras = list.filter(a => !CLASSIC.includes(a.name));
+  extendRoomFor(Math.max(1, Math.ceil(extras.length / 2)), extras.length > 0);   // FILA 39: 2 colunas; a sala abre SEMPRE (o terço direito é do RH)
+  KNOWN = [...classics.map(a => a.name), ...extras.map(a => a.name), 'arvys'];
+  OBST = null;                                     // FILA 31: mesas novas (contratados) entram nos obstáculos
+  AGENTES_RECADO = [...classics.map(a => a.name), ...extras.map(a => a.name)];
+  classics.forEach((a) => {
+    CORES[a.name] = a.color || CORES[a.name] || '#666';
+    CALL[a.name] = a.vibe || CALL[a.name] || '';
+    HOME[a.name] = CLASSIC_HOME[a.name];
+  });
+  extras.forEach((a, i) => {
+    CORES[a.name] = a.color || '#666';
+    CALL[a.name] = a.vibe || '';
+    HOME[a.name] = buildGenericDesk(a, i % 2, Math.floor(i / 2));
+  });
+}
+
+async function loadAgentsMeta() {
+  try {
+    const r = await fetch('/live/agents.json', { cache: 'no-store' });
+    if (!r.ok) throw 0;
+    applyAgentsJson(await r.json());
+  } catch (e) {
+    // A5: sem agents.json, fail-closed — nenhum agente é desenhado, e a
+    // página avisa em vez de fingir os 4 clássicos.
+    $('#agents-missing').hidden = false;
+  }
+}
+
+buildScene();
+loadAgentsMeta().then(() => { tick(); setInterval(tick, 2000); });
+</script>
+</body>
+</html>

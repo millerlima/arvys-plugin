@@ -1,0 +1,1284 @@
+/* ============================================================================
+   app.css — QG do Arvys, shell de plataforma.
+   Vanilla puro: zero framework, zero CDN, zero fonte remota (spec, criterio 7).
+   Tema por atributo data-tema no <html> (claro | escuro), com prefers-color-scheme
+   decidindo o padrao no boot (index.html) e o toggle persistindo em localStorage.
+   ========================================================================= */
+
+:root {
+  --fonte: ui-sans-serif, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: ui-monospace, "Cascadia Code", "Consolas", "SFMono-Regular", Menlo, monospace;
+  /* --- spec 2026-09-qg-tres-perguntas (T8) · a escala -------------------
+     Antes desta spec o CSS tinha 21 tamanhos de fonte e 8 pesos, escolhidos
+     um a um. Numa unica linha da tabela conviviam 11px, 11.5px, 11px e 13.5px.
+     Agora: 6 degraus, 3 pesos. Nenhum literal — o sensor do CI reprova. */
+  --t-1: 26px;   /* titulo de secao */
+  --t-2: 21px;   /* titulo de bloco / numero grande */
+  --t-3: 17px;   /* subtitulo */
+  --t-4: 14px;   /* corpo */
+  --t-5: 13px;   /* secundario */
+  --t-6: 11px;   /* meta, rotulo, chip */
+  --p-normal: 400;
+  --p-forte: 600;
+  --p-titulo: 700;
+
+  --r-sm: 6px; --r: 10px; --r-lg: 14px; --r-pil: 999px;   /* forma, nao tamanho */
+  --t-mono: .875em;  /* codigo em linha: escala RELATIVA ao texto em volta */
+  --esp-0: 2px;   /* ajuste optico: codigo em linha, kbd, chip */
+  --esp-1: 4px; --esp-2: 8px; --esp-3: 12px; --esp-4: 16px; --esp-5: 24px; --esp-6: 32px; --esp-7: 48px;
+  --lateral-w: 244px;
+
+  /* claro — papel morno, tinta quente */
+  --fundo:      #f5f3ee;
+  --sup:        #ffffff;
+  --sup-2:      #faf8f3;
+  --sup-3:      #f0ede5;
+  --linha:      #e2ddd1;
+  --linha-forte:#cfc8b8;
+  --tinta:      #1d1c19;
+  --tinta-2:    #4c4840;
+  --apagado:    #797266;
+  --brass:      #8a6512;
+  --brass-2:    #a67c14;
+  --brass-fraco:#f4ead2;
+  --ok:         #2b8a3e;
+  --ok-fraco:   #e4f3e6;
+  --atencao:    #a06a00;
+  --atencao-fraco:#fbf0d8;
+  --ruim:       #c0392b;
+  --ruim-fraco: #fbe7e4;
+  --parado:     #7c7a75;
+  --parado-fraco:#eceae5;
+  --sombra:     0 1px 2px rgba(28,26,22,.05), 0 6px 18px -10px rgba(28,26,22,.16);
+  --sombra-alta:0 2px 6px rgba(28,26,22,.07), 0 18px 40px -20px rgba(28,26,22,.32);
+  --foco:       #1a6fd4;
+}
+
+html[data-tema="escuro"] {
+  --fundo:      #121317;
+  --sup:        #1a1c21;
+  --sup-2:      #1f2127;
+  --sup-3:      #262930;
+  --linha:      #2e323b;
+  --linha-forte:#414653;
+  --tinta:      #eceae4;
+  --tinta-2:    #bcb9b1;
+  --apagado:    #8b887f;
+  --brass:      #d8b45a;
+  --brass-2:    #e6c877;
+  --brass-fraco:#2c2618;
+  --ok:         #5ac272;
+  --ok-fraco:   #16281a;
+  --atencao:    #e0b04a;
+  --atencao-fraco:#2b2413;
+  --ruim:       #f0776a;
+  --ruim-fraco: #2e1a17;
+  --parado:     #8d8b85;
+  --parado-fraco:#242629;
+  --sombra:     0 1px 2px rgba(0,0,0,.4), 0 8px 24px -14px rgba(0,0,0,.7);
+  --sombra-alta:0 2px 8px rgba(0,0,0,.45), 0 22px 48px -22px rgba(0,0,0,.85);
+  --foco:       #74b3ff;
+}
+
+* { box-sizing: border-box; }
+
+html, body { height: 100%; }
+
+body {
+  margin: 0;
+  font-family: var(--fonte);
+  font-size: var(--t-4);
+  line-height: 1.55;
+  color: var(--tinta);
+  background: var(--fundo);
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--brass); }
+code, .mono { font-family: var(--mono); font-size: var(--t-mono); }
+h1, h2, h3, h4 { line-height: 1.25; margin: 0; font-weight: var(--p-forte); letter-spacing: -.011em; }
+
+:focus-visible {
+  outline: 2px solid var(--foco);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
+}
+
+.sr {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: calc(var(--esp-0) / -2);
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+.pular {
+  position: absolute; left: -999px; top: 8px; z-index: 100;
+  background: var(--sup); color: var(--tinta); padding: var(--esp-2) var(--esp-4);
+  border: 1px solid var(--linha-forte); border-radius: var(--r);
+}
+.pular:focus { left: 8px; }
+
+/* ===================== esqueleto ===================== */
+
+.app { display: flex; min-height: 100vh; }
+
+.topo { display: none; }
+
+.lateral {
+  width: var(--lateral-w);
+  flex: 0 0 var(--lateral-w);
+  background: var(--sup);
+  border-right: 1px solid var(--linha);
+  display: flex; flex-direction: column;
+  position: sticky; top: 0; height: 100vh;
+  z-index: 30;
+}
+
+.marca {
+  display: flex; align-items: center; gap: var(--esp-3);
+  padding: var(--esp-4) var(--esp-4) var(--esp-3);
+  border-bottom: 1px solid var(--linha);
+}
+.marca-logo {
+  width: 30px; height: 30px; flex: none;
+  display: grid; place-items: center;
+  background: #1a1b1e; color: var(--brass-2);
+  border-radius: var(--r);
+  font-weight: var(--p-titulo); font-size: var(--t-4); letter-spacing: .02em;
+  box-shadow: inset 0 0 0 1px rgba(203,168,66,.35);
+}
+.marca-txt { display: flex; flex-direction: column; line-height: 1.15; min-width: 0; }
+.marca-txt strong { font-size: var(--t-4); letter-spacing: .1em; }
+.marca-txt small { font-size: var(--t-6); color: var(--apagado); }
+
+.botao-tema {
+  margin-left: auto; flex: none;
+  width: 30px; height: 30px;
+  display: grid; place-items: center;
+  border: 1px solid var(--linha); border-radius: var(--r);
+  background: var(--sup-2); color: var(--tinta-2);
+  cursor: pointer;
+}
+.botao-tema:hover { border-color: var(--linha-forte); color: var(--tinta); }
+.ico-tema {
+  width: 14px; height: 14px; border-radius: 50%;
+  background: currentColor;
+  box-shadow: inset -4px -4px 0 0 var(--sup-2);
+}
+html[data-tema="escuro"] .ico-tema { box-shadow: inset 4px 4px 0 0 var(--sup-2); }
+
+.menu {
+  list-style: none; margin: 0; padding: var(--esp-3) var(--esp-2);
+  flex: 1 1 auto; overflow-y: auto;
+}
+.menu li + li { margin-top: calc(var(--esp-0) / 2); }
+.menu a {
+  display: flex; align-items: center; gap: 10px;
+  padding: var(--esp-2) var(--esp-2);
+  border-radius: var(--r);
+  color: var(--tinta-2); text-decoration: none;
+  font-size: var(--t-5); font-weight: var(--p-normal);
+  border: 1px solid transparent;
+}
+.menu a:hover { background: var(--sup-2); color: var(--tinta); }
+.menu a[aria-current="page"] {
+  background: var(--brass-fraco);
+  color: var(--brass);
+  border-color: color-mix(in srgb, var(--brass) 26%, transparent);
+  font-weight: var(--p-forte);
+}
+.menu-ico { width: 18px; flex: none; display: grid; place-items: center; opacity: .9; }
+.menu-ico svg { width: 16px; height: 16px; display: block; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.menu-nome { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.menu-selo {
+  flex: none; font-size: var(--t-6); font-weight: var(--p-titulo); line-height: 1;
+  padding: var(--esp-1) var(--esp-1); border-radius: var(--r-pil);
+  background: var(--atencao-fraco); color: var(--atencao);
+}
+/* T5/critério 14: cabeçalho de grupo do menu (Agora · Memória · Casa) — só
+   texto apagado, sem cor nova; nunca um link (ver `pintaMenu`, `role="presentation"`). */
+.menu-grupo {
+  padding: var(--esp-2) var(--esp-2) var(--esp-1);
+  font-size: var(--t-6);
+  font-weight: var(--p-forte);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--apagado);
+}
+.menu-grupo:not(:first-child) { margin-top: var(--esp-2); }
+
+.lateral-rodape { border-top: 1px solid var(--linha); padding: var(--esp-3) var(--esp-4) var(--esp-4); }
+.cota-mini-topo {
+  display: flex; justify-content: space-between; align-items: baseline; gap: var(--esp-2);
+  font-size: var(--t-6); text-transform: uppercase; letter-spacing: .06em;
+  color: var(--apagado); font-weight: var(--p-forte);
+}
+.cota-mini-topo span:last-child { font-size: var(--t-5); letter-spacing: 0; text-transform: none; color: var(--tinta); font-weight: var(--p-titulo); }
+/* barra de progresso: a peca interna tem SEMPRE 100% de largura e e escalada por
+   transform — animar `width` faz o layout ser recalculado a cada quadro. */
+.barra { height: 6px; border-radius: var(--r-pil); background: var(--sup-3); overflow: hidden; margin: var(--esp-2) 0 var(--esp-1); }
+.barra > i {
+  display: block; width: 100%; height: 100%;
+  background: var(--brass); border-radius: var(--r-pil);
+  transform-origin: left center;
+  transform: scaleX(var(--fr, 0));
+  transition: transform .3s ease;
+}
+.barra.b-ok > i { background: var(--ok); }
+.barra.b-atencao > i { background: var(--atencao); }
+.barra.b-ruim > i { background: var(--ruim); }
+.cota-mini-nota { margin: 0; font-size: var(--t-6); color: var(--apagado); line-height: 1.4; }
+.raiz { margin: var(--esp-3) 0 0; font-size: var(--t-6); color: var(--apagado); word-break: break-all; line-height: 1.4; }
+.raiz code { font-size: var(--t-6); color: var(--tinta-2); }
+
+.veu { display: none; }
+
+.conteudo { flex: 1 1 auto; min-width: 0; }
+.palco { max-width: 1080px; margin: 0 auto; padding: var(--esp-6) var(--esp-6) var(--esp-7); }
+.palco:focus { outline: none; }
+
+/* ===================== cabecalho de secao ===================== */
+
+.cab { margin-bottom: var(--esp-5); }
+.cab h1 { font-size: var(--t-1); letter-spacing: -.02em; }
+.cab .lead { margin: var(--esp-2) 0 0; color: var(--tinta-2); font-size: var(--t-4); max-width: 84ch; text-wrap: balance; }
+.cab-linha { display: flex; align-items: flex-start; gap: var(--esp-4); flex-wrap: wrap; }
+.cab-acoes { margin-left: auto; display: flex; gap: var(--esp-2); flex-wrap: wrap; }
+
+/* ===================== blocos ===================== */
+
+.cartao {
+  background: var(--sup);
+  border: 1px solid var(--linha);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sombra);
+  padding: var(--esp-5);
+}
+.cartao + .cartao, .bloco + .bloco { margin-top: var(--esp-4); }
+.bloco { margin-top: var(--esp-4); }
+
+.titulo-bloco {
+  display: flex; align-items: baseline; gap: var(--esp-3); flex-wrap: wrap;
+  margin: 0 0 var(--esp-3);
+}
+.titulo-bloco h2 { font-size: var(--t-6); text-transform: uppercase; letter-spacing: .085em; color: var(--apagado); font-weight: var(--p-titulo); }
+.titulo-bloco .sub { font-size: var(--t-5); color: var(--apagado); }
+
+.grade { display: grid; gap: var(--esp-4); }
+.g2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.g3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.g4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.g-auto { grid-template-columns: repeat(auto-fill, minmax(238px, 1fr)); }
+
+/* numero com unidade e comparacao — numero sozinho e proibido (spec, Publico) */
+.num { display: flex; flex-direction: column; gap: var(--esp-0); }
+.num-rot { font-size: var(--t-6); text-transform: uppercase; letter-spacing: .07em; color: var(--apagado); font-weight: var(--p-forte); }
+.num-val { font-size: var(--t-1); font-weight: var(--p-titulo); letter-spacing: -.02em; line-height: 1.1;
+           color: var(--tinta); }   /* T8.2: numero sem tom NAO usa cor de estado */
+.num-val .un { font-size: var(--t-5); font-weight: var(--p-forte); color: var(--apagado); margin-left: var(--esp-1); letter-spacing: 0; }
+.num-cmp { font-size: var(--t-5); color: var(--apagado); line-height: 1.4; }
+.num.n-ok .num-val { color: var(--ok); }
+.num.n-atencao .num-val { color: var(--atencao); }
+.num.n-ruim .num-val { color: var(--ruim); }
+
+/* estado vazio: sempre com o caminho para resolver */
+.vazio {
+  border: 1px dashed var(--linha-forte);
+  border-radius: var(--r-lg);
+  background: var(--sup-2);
+  padding: var(--esp-5);
+  text-align: left;
+}
+.vazio h3 { font-size: var(--t-4); margin-bottom: var(--esp-1); }
+.vazio p { margin: 0 0 var(--esp-2); color: var(--tinta-2); font-size: var(--t-4); max-width: 60ch; }
+.vazio .caminho {
+  margin: var(--esp-3) 0 0; font-size: var(--t-5); color: var(--tinta-2);
+  background: var(--sup); border: 1px solid var(--linha); border-radius: var(--r);
+  padding: var(--esp-2) var(--esp-3); display: inline-block;
+}
+.vazio .caminho b { color: var(--tinta); font-weight: var(--p-forte); }
+
+/* erro de leitura: degrada mostrando o cru, nunca derruba a pagina */
+.torto {
+  border: 1px solid color-mix(in srgb, var(--ruim) 35%, var(--linha));
+  background: var(--ruim-fraco);
+  border-radius: var(--r);
+  padding: var(--esp-4);
+}
+.torto h3 { font-size: var(--t-4); color: var(--ruim); margin-bottom: var(--esp-1); }
+.torto p { margin: 0 0 var(--esp-2); font-size: var(--t-5); color: var(--tinta-2); }
+.torto pre {
+  margin: 0; max-height: 220px; overflow: auto;
+  background: var(--sup); border: 1px solid var(--linha); border-radius: var(--r-sm);
+  padding: var(--esp-2) var(--esp-3); font-family: var(--mono); font-size: var(--t-6); white-space: pre-wrap; word-break: break-word;
+}
+
+/* pilulas e estados */
+.pil {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: var(--t-6); font-weight: var(--p-forte); line-height: 1;
+  padding: var(--esp-1) var(--esp-2); border-radius: var(--r-pil);
+  background: var(--sup-3); color: var(--tinta-2);
+  border: 1px solid transparent; white-space: nowrap;
+}
+.pil::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex: none; }
+.pil.sem-ponto::before { display: none; }
+.pil.p-ok      { background: var(--ok-fraco);      color: var(--ok); }
+.pil.p-atencao { background: var(--atencao-fraco);  color: var(--atencao); }
+.pil.p-ruim    { background: var(--ruim-fraco);     color: var(--ruim); }
+.pil.p-parado  { background: var(--parado-fraco);   color: var(--parado); }
+.pil.p-brass   { background: var(--brass-fraco);    color: var(--brass); }
+
+/* jargao com explicacao ao passar o mouse (1a ocorrencia por tela) */
+.jarg {
+  border-bottom: 1px dotted var(--brass);
+  cursor: help;
+  text-decoration: none;
+}
+
+/* botoes */
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  font: inherit; font-size: var(--t-5); font-weight: var(--p-forte);
+  padding: var(--esp-2) var(--esp-3); border-radius: var(--r);
+  border: 1px solid var(--linha-forte); background: var(--sup); color: var(--tinta);
+  cursor: pointer; text-decoration: none;
+}
+.btn:hover { background: var(--sup-2); border-color: var(--brass); color: var(--brass); }
+.btn.ativo { background: var(--brass-fraco); border-color: var(--brass); color: var(--brass); }
+.btn.fantasma { border-color: transparent; background: transparent; color: var(--apagado); }
+.btn.fantasma:hover { background: var(--sup-2); color: var(--tinta); }
+
+.abas { display: flex; gap: var(--esp-2); flex-wrap: wrap; margin-bottom: var(--esp-4); }
+
+.campo {
+  font: inherit; font-size: var(--t-5);
+  padding: var(--esp-2) var(--esp-3); border-radius: var(--r);
+  border: 1px solid var(--linha-forte); background: var(--sup); color: var(--tinta);
+  width: 100%; max-width: 340px;
+}
+.campo::placeholder { color: var(--apagado); }
+
+/* E9 · T5 — formulário de e-mail na gaveta do item bloqueado */
+.paywall-form { display: flex; gap: var(--esp-2); flex-wrap: wrap; margin: var(--esp-3) 0; align-items: center; }
+.paywall-form .campo { max-width: 280px; }
+
+/* listas de itens */
+.lista { list-style: none; margin: 0; padding: 0; }
+.lista > li {
+  padding: var(--esp-3) 0;
+  border-top: 1px solid var(--linha);
+}
+.lista > li:first-child { border-top: 0; padding-top: 0; }
+.item-cab { display: flex; align-items: baseline; gap: var(--esp-2); flex-wrap: wrap; }
+.item-cab .t { font-weight: var(--p-forte); font-size: var(--t-4); }
+.item-meta { font-size: var(--t-5); color: var(--apagado); }
+
+/* "esperando voce" — o bloco que abre a Inicio */
+.espera { display: grid; gap: var(--esp-3); }
+.espera-item {
+  display: flex; align-items: flex-start; gap: var(--esp-3);
+  padding: var(--esp-4);
+  border: 1px solid color-mix(in srgb, var(--atencao) 32%, var(--linha));
+  background: var(--atencao-fraco);
+  border-radius: var(--r);
+}
+.espera-verbo {
+  flex: none; font-size: var(--t-6); font-weight: var(--p-titulo); letter-spacing: .07em; text-transform: uppercase;
+  color: var(--atencao); padding-top: 2px; min-width: 74px;
+}
+.espera-txt { flex: 1 1 auto; min-width: 0; font-size: var(--t-4); }
+.espera-txt small { display: block; color: var(--tinta-2); font-size: var(--t-5); margin-top: var(--esp-0); }
+
+/* T4a (Emenda 1) — os 4 acionamentos por ocorrência e os grupos por fonte do
+ * "Esperando você" expandido. Só classes novas com prefixo .esp-, só tokens
+ * (nenhuma cor nova: os botões usam .btn/.gav-b existentes). */
+.esp-grupo + .esp-grupo { margin-top: var(--esp-4); }
+.esp-grupo .g-cab { margin-bottom: var(--esp-2); background: var(--sup); border: 1px solid var(--linha); border-radius: var(--r); padding: var(--esp-2) var(--esp-3); }
+/* `.esp-card` só empilha os blocos (moldura já vem de `.espera-item`, dentro) */
+.esp-acoes { display: flex; flex-wrap: wrap; align-items: center; gap: var(--esp-2); margin-top: var(--esp-2); }
+.esp-sel { max-width: 200px; }
+.esp-nota-editor { display: flex; flex-wrap: wrap; gap: var(--esp-2); margin-top: var(--esp-2); }
+.esp-nota-editor .campo { flex: 1 1 220px; }
+.esp-status:empty { display: none; }
+.esp-status { color: var(--tinta-2); }
+
+/* fala do Arvys (briefing) */
+.fala {
+  display: flex; gap: var(--esp-3); align-items: flex-start;
+  background: var(--sup-2);
+  border: 1px solid var(--linha);
+  border-radius: var(--r);
+  padding: var(--esp-4);
+}
+.fala-av {
+  flex: none; width: 30px; height: 30px; border-radius: var(--r);
+  display: grid; place-items: center;
+  background: #1a1b1e; color: var(--brass-2); font-weight: var(--p-titulo); font-size: var(--t-5);
+}
+.fala-corpo { min-width: 0; flex: 1 1 auto; }
+.fala-corpo .quem { font-size: var(--t-6); color: var(--apagado); margin-bottom: var(--esp-1); }
+.fala-corpo .quem b { color: var(--tinta); font-weight: var(--p-forte); }
+.fala-linhas { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.fala-linhas li { font-size: var(--t-4); }
+.fala-linhas .rot { color: var(--apagado); }
+.fala-alerta { margin: var(--esp-3) 0 0; font-size: var(--t-5); color: var(--atencao); }
+
+/* cartao de agente */
+.ag-cartao {
+  display: block; text-align: left; width: 100%;
+  font: inherit; color: inherit; text-decoration: none; cursor: pointer;
+  background: var(--sup);
+  border: 1px solid var(--linha);
+  border-radius: var(--r-lg);
+  padding: var(--esp-4);
+  box-shadow: var(--sombra);
+}
+.ag-cartao:hover { border-color: var(--brass); box-shadow: var(--sombra-alta); transform: translateY(-1px); }
+.ag-topo { display: flex; align-items: center; gap: 10px; margin-bottom: var(--esp-2); }
+.ag-emoji {
+  width: 34px; height: 34px; flex: none; border-radius: var(--r);
+  display: grid; place-items: center; font-size: var(--t-3);
+  background: var(--sup-3);
+  box-shadow: inset 0 0 0 2px var(--cor-ag, var(--linha-forte));
+}
+.ag-topo > span:last-child { min-width: 0; }
+.ag-nome { display: block; font-weight: var(--p-forte); font-size: var(--t-4); line-height: 1.2; }
+.ag-papel { display: block; font-size: var(--t-6); color: var(--apagado); }
+.ag-l1 {
+  font-size: var(--t-5); color: var(--tinta-2); margin: 0 0 var(--esp-2);
+  /* T2 (spec 2026-09-qg-redesenho-2, critério 5): galeria pede no MÁXIMO 2
+     linhas de L1 (era 3). `2` aqui é contagem de linhas, não tamanho/peso/
+     espaço/raio — conferido com `node scripts/css-sem-literal.mjs` antes de
+     assumir que passaria: o sensor só olha font-size/font-weight/padding/
+     margin/border-radius/token com medida, e `line-clamp` não está na lista. */
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.ag-rodape { display: flex; align-items: center; gap: var(--esp-2); flex-wrap: wrap; font-size: var(--t-6); color: var(--apagado); }
+/* T2 · a galeria É a visão "cartões" melhorada (critério 4/5 da spec):
+   colunas um pouco mais largas que `.g-auto` para caber o retrato maior
+   (72px, passado por `retratoAgente`, não por CSS) sem apertar nome/L1/
+   rodapé. Só geometria (grid-template-columns), que a 1ª exceção do
+   css-sem-literal já isenta de tamanho/peso/espaço. */
+.grade.ag-galeria { grid-template-columns: repeat(auto-fill, minmax(272px, 1fr)); }
+
+/* ficha do agente */
+.ficha-topo { display: flex; align-items: flex-start; gap: var(--esp-4); flex-wrap: wrap; margin-bottom: var(--esp-4); }
+.ficha-emoji { width: 52px; height: 52px; border-radius: var(--r-lg); display: grid; place-items: center; font-size: var(--t-1); background: var(--sup-3); box-shadow: inset 0 0 0 2px var(--cor-ag, var(--linha-forte)); flex: none; }
+.xp-barra { max-width: 260px; }
+
+.def { display: grid; grid-template-columns: minmax(0,150px) 1fr; gap: 6px var(--esp-4); font-size: var(--t-5); }
+.def dt { color: var(--apagado); }
+.def dd { margin: 0; color: var(--tinta); }
+
+/* markdown renderizado (parser proprio, sem lib) */
+.md { font-size: var(--t-4); color: var(--tinta-2); }
+.md > *:first-child { margin-top: 0; }
+.md > *:last-child { margin-bottom: 0; }
+.md h1, .md h2, .md h3, .md h4 { color: var(--tinta); margin: var(--esp-4) 0 var(--esp-2); }
+.md h1 { font-size: var(--t-3); } .md h2 { font-size: var(--t-3); } .md h3 { font-size: var(--t-4); } .md h4 { font-size: var(--t-5); }
+.md p { margin: 0 0 var(--esp-3); }
+.md ul, .md ol { margin: 0 0 var(--esp-3); padding-left: 20px; }
+.md li { margin: var(--esp-0) 0; }
+/* citacao: recuo + cor apagada + fundo sutil. Sem barra lateral em bloco nenhum. */
+.md blockquote {
+  margin: 0 0 var(--esp-3);
+  padding: var(--esp-2) var(--esp-3);
+  background: var(--sup-2);
+  border-radius: var(--r-sm);
+  color: var(--apagado);
+}
+.md blockquote > *:last-child { margin-bottom: 0; }
+.md pre { margin: 0 0 var(--esp-3); background: var(--sup-2); border: 1px solid var(--linha); border-radius: var(--r); padding: var(--esp-2) var(--esp-3); overflow: auto; font-size: var(--t-5); }
+.md code { background: var(--sup-3); padding: var(--esp-0) var(--esp-1); border-radius: var(--r-sm); }
+.md pre code { background: none; padding: 0; }
+.md strong { color: var(--tinta); }
+.md hr { border: 0; border-top: 1px solid var(--linha); margin: var(--esp-4) 0; }
+.md .cru { white-space: pre-wrap; font-family: var(--mono); font-size: var(--t-5); }
+
+/* tabela */
+.tab-rolo { overflow-x: auto; }
+table.tab { width: 100%; border-collapse: collapse; font-size: var(--t-5); }
+table.tab th {
+  text-align: left; font-size: var(--t-6); text-transform: uppercase; letter-spacing: .06em;
+  color: var(--apagado); font-weight: var(--p-titulo); padding: 0 var(--esp-3) var(--esp-2) 0;
+  border-bottom: 1px solid var(--linha); white-space: nowrap;
+}
+table.tab td { padding: var(--esp-2) var(--esp-3) var(--esp-2) 0; border-bottom: 1px solid var(--linha); color: var(--tinta-2); vertical-align: top; }
+table.tab tr:last-child td { border-bottom: 0; }
+
+/* detalhes expansiveis */
+details.exp { border-top: 1px solid var(--linha); }
+details.exp:first-of-type { border-top: 0; }
+details.exp > summary {
+  cursor: pointer; padding: var(--esp-3) 0; list-style: none;
+  display: flex; align-items: baseline; gap: var(--esp-3); flex-wrap: wrap;
+}
+details.exp > summary::-webkit-details-marker { display: none; }
+details.exp > summary::before {
+  content: "▸"; color: var(--apagado); font-size: var(--t-6); flex: none; width: 12px;
+}
+details.exp[open] > summary::before { content: "▾"; }
+details.exp > summary:hover { color: var(--brass); }
+details.exp .corpo { padding: 0 0 var(--esp-4) var(--esp-5); }
+
+/* escritorio ao vivo */
+.moldura-live {
+  border: 1px solid var(--linha);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  background: var(--sup);
+  box-shadow: var(--sombra);
+  height: calc(100vh - 210px);
+  min-height: 460px;
+}
+.moldura-live iframe { display: block; width: 100%; height: 100%; border: 0; }
+
+/* carregando */
+.carregando { display: grid; place-items: center; gap: var(--esp-3); padding: var(--esp-7) 0; color: var(--apagado); }
+.spin {
+  width: 22px; height: 22px; border-radius: 50%;
+  border: 2px solid var(--linha-forte); border-top-color: var(--brass);
+  animation: gira .8s linear infinite;
+}
+@keyframes gira { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .spin { animation: none; }
+  * { transition: none !important; }
+}
+
+.sem-js { max-width: 620px; margin: 12vh auto; padding: var(--esp-5); }
+.sem-js h1 { font-size: var(--t-2); margin-bottom: var(--esp-3); }
+
+/* =========================================================================
+   T10 / E1 — os tres padroes que o dono espera
+   (1) acionamento no clicavel  (2) gaveta de detalhamento  (3) 3+ visoes
+   Sem barra de acento colorida na lateral de card ou bloco: o que marca o
+   clicavel e borda inteira + fundo + sombra + deslocamento no :active.
+   ========================================================================= */
+
+/* ---------- (1) acionamento: tudo que abre algo parece que abre ---------- */
+
+.abre {
+  font: inherit; color: inherit; text-align: left;
+  background: none; border: 0; padding: 0; margin: 0;
+  cursor: pointer;
+  border-bottom: 1px solid transparent;
+  transition: color .12s ease, border-color .12s ease;
+}
+.abre:hover { color: var(--brass); border-bottom-color: var(--brass); }
+.abre:active { color: var(--brass-2); }
+
+table.tab.tab-clic tbody tr { cursor: pointer; transition: background .12s ease; }
+table.tab.tab-clic tbody tr:hover { background: var(--sup-2); }
+table.tab.tab-clic tbody tr:hover td:first-child .abre { color: var(--brass); border-bottom-color: var(--brass); }
+table.tab.tab-clic tbody tr:active { background: var(--sup-3); }
+table.tab.tab-clic tbody tr:focus-within { background: var(--sup-2); }
+table.tab.tab-clic td:first-child { padding-left: 4px; }
+table.tab.tab-clic td { padding-right: var(--esp-4); }
+
+.th-ord {
+  font: inherit; font-size: var(--t-6); text-transform: uppercase; letter-spacing: .06em;
+  font-weight: var(--p-titulo); color: var(--apagado);
+  background: none; border: 0; padding: var(--esp-0) var(--esp-1) var(--esp-0) 0; margin: 0;
+  display: inline-flex; align-items: center; gap: 5px;
+  cursor: pointer; border-radius: var(--r-sm);
+  transition: color .12s ease;
+}
+.th-ord:hover { color: var(--brass); }
+.th-ord.ativa { color: var(--tinta); }
+.th-ord .seta { font-size: var(--t-6); opacity: .75; }
+.th-ord.ativa .seta { color: var(--brass); opacity: 1; }
+
+.barra-filtro { align-items: center; margin-bottom: var(--esp-3); }
+.barra-filtro .item-meta { align-self: center; }
+
+/* ---------- (3) seletor de visao ---------- */
+
+.barra-visoes {
+  display: flex; align-items: center; gap: var(--esp-3); flex-wrap: wrap;
+  margin: 0 0 var(--esp-4);
+}
+.visoes {
+  display: inline-flex; gap: 2px; padding: var(--esp-1);
+  background: var(--sup-3); border: 1px solid var(--linha); border-radius: var(--r);
+}
+.visoes .vis {
+  display: inline-flex; align-items: center; gap: 6px;
+  font: inherit; font-size: var(--t-5); font-weight: var(--p-forte);
+  color: var(--tinta-2); background: transparent;
+  border: 1px solid transparent; border-radius: var(--r);
+  padding: var(--esp-1) var(--esp-3); cursor: pointer;
+  transition: background .12s ease, color .12s ease, border-color .12s ease;
+}
+.visoes .vis:hover { color: var(--tinta); background: var(--sup-2); }
+.visoes .vis:active { transform: translateY(1px); }
+.visoes .vis.ativo {
+  background: var(--sup); color: var(--brass);
+  border-color: color-mix(in srgb, var(--brass) 30%, transparent);
+  box-shadow: var(--sombra);
+}
+.vis-ico { display: grid; place-items: center; width: 15px; height: 15px; }
+.vis-ico svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ---------- cartao clicavel generico (cartoes, quadro, linha do tempo) ---------- */
+
+.mini {
+  display: flex; flex-direction: column; gap: 5px; align-items: flex-start;
+  width: 100%; text-align: left; font: inherit; color: inherit;
+  background: var(--sup); border: 1px solid var(--linha); border-radius: var(--r);
+  padding: var(--esp-3) var(--esp-4);
+  cursor: pointer; box-shadow: var(--sombra);
+  transition: border-color .12s ease, box-shadow .12s ease, transform .12s ease;
+}
+.mini:hover { border-color: var(--brass); box-shadow: var(--sombra-alta); transform: translateY(-1px); }
+.mini:active { transform: translateY(0); box-shadow: var(--sombra); }
+.mini-t { font-weight: var(--p-forte); font-size: var(--t-4); line-height: 1.35; color: var(--tinta); }
+.mini-m, .mini-c { font-size: var(--t-5); color: var(--apagado); }
+.mini-res { display: block; margin-top: var(--esp-1); font-size: var(--t-5); color: var(--tinta-2); line-height: 1.4; }
+.mini { position: relative; padding-right: var(--esp-6); }
+/* "abrir →" flutua no canto: aparece no hover/foco sem reservar uma linha vazia */
+.mini-abrir {
+  position: absolute; right: var(--esp-3); bottom: var(--esp-3);
+  font-size: var(--t-6); font-weight: var(--p-forte); color: var(--brass);
+  opacity: 0; transition: opacity .12s ease;
+}
+.mini:hover .mini-abrir, .mini:focus-visible .mini-abrir { opacity: 1; }
+
+/* ---------- quadro por situacao ---------- */
+
+.quadro {
+  display: grid; gap: var(--esp-3);
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  align-items: start;
+}
+.q-col {
+  background: var(--sup-2); border: 1px solid var(--linha);
+  border-radius: var(--r-lg); padding: var(--esp-3);
+  min-width: 0;
+}
+.q-cab { display: flex; align-items: center; justify-content: space-between; gap: var(--esp-2); margin-bottom: var(--esp-3); }
+.q-lista { display: grid; gap: var(--esp-2); max-height: 62vh; overflow-y: auto; }
+.q-vazio { margin: 0; font-size: var(--t-5); color: var(--apagado); padding: var(--esp-2) 0; }
+
+/* ---------- linha do tempo (trilho neutro, nunca acento colorido) ---------- */
+
+.ldt { display: grid; gap: var(--esp-5); }
+.ldt-g { position: relative; padding-left: var(--esp-5); }
+.ldt-g::before {
+  content: ""; position: absolute; left: 5px; top: 10px; bottom: -24px;
+  width: 1px; background: var(--linha-forte);
+}
+.ldt-g:last-child::before { bottom: 6px; }
+.ldt-cab { display: flex; align-items: baseline; gap: var(--esp-3); flex-wrap: wrap; margin-bottom: var(--esp-3); }
+.ldt-cab h3 { font-size: var(--t-4); }
+.ldt-ponto {
+  position: absolute; left: 0; top: 6px;
+  width: 11px; height: 11px; border-radius: 50%;
+  background: var(--sup); border: 2px solid var(--linha-forte);
+}
+.ldt-itens { display: grid; gap: var(--esp-2); }
+
+/* ---------- cartao de agente virou botao (mesmo visual aprovado) ---------- */
+
+.ag-cartao:active { transform: translateY(0); box-shadow: var(--sombra); }
+.ag-cartao > .ag-topo, .ag-cartao > .ag-rodape { display: flex; }
+.ag-abrir { margin-left: auto; color: var(--brass); font-weight: var(--p-forte); opacity: 0; transition: opacity .12s ease; }
+.ag-cartao:hover .ag-abrir, .ag-cartao:focus-visible .ag-abrir { opacity: 1; }
+.ag-linha-nome { white-space: nowrap; }
+
+/* summary: hover mais evidente que so trocar a cor do texto */
+details.exp > summary { border-radius: var(--r-sm); transition: background .12s ease; }
+details.exp > summary:hover { background: var(--sup-2); color: var(--brass); }
+details.exp > summary:active { background: var(--sup-3); }
+
+/* ---------- (2) gaveta de detalhamento ---------- */
+
+.gaveta-veu {
+  position: fixed; inset: 0; z-index: 60;
+  background: rgba(12, 11, 9, .38);
+  backdrop-filter: blur(1.5px);
+}
+.gaveta-veu[hidden] { display: none; }
+
+.gaveta {
+  position: fixed; top: 0; right: 0; bottom: 0; z-index: 61;
+  width: min(560px, 100vw);
+  display: flex; flex-direction: column;
+  background: var(--sup);
+  border-left: 1px solid var(--linha-forte);
+  box-shadow: var(--sombra-alta);
+  transform: translateX(102%);
+  transition: transform .2s ease;
+}
+.gaveta.aberta { transform: none; }
+.gaveta[hidden] { display: none; }
+
+.gaveta-topo {
+  display: flex; align-items: flex-start; gap: var(--esp-3);
+  padding: var(--esp-5) var(--esp-5) var(--esp-4);
+  border-bottom: 1px solid var(--linha);
+}
+.gaveta-cab { min-width: 0; flex: 1 1 auto; }
+.gaveta-tipo {
+  margin: 0 0 var(--esp-1); font-size: var(--t-6); text-transform: uppercase; letter-spacing: .07em;
+  color: var(--apagado); font-weight: var(--p-titulo); word-break: break-word;
+}
+.gaveta-topo h2 { font-size: var(--t-2); letter-spacing: -.015em; word-break: break-word; }
+.gaveta-sub { margin: var(--esp-2) 0 0; display: flex; align-items: center; gap: var(--esp-2); flex-wrap: wrap; }
+.gaveta-x {
+  flex: none; width: 32px; height: 32px; display: grid; place-items: center;
+  font: inherit; font-size: var(--t-4); line-height: 1;
+  background: var(--sup-2); color: var(--tinta-2);
+  border: 1px solid var(--linha); border-radius: var(--r); cursor: pointer;
+  transition: background .12s ease, color .12s ease, border-color .12s ease;
+}
+.gaveta-x:hover { background: var(--sup-3); color: var(--tinta); border-color: var(--linha-forte); }
+.gaveta-x:active { transform: translateY(1px); }
+
+.gaveta-corpo { flex: 1 1 auto; overflow-y: auto; padding: var(--esp-5); }
+.gaveta-corpo > *:first-child { margin-top: 0; }
+.gaveta-corpo h4 { font-size: var(--t-5); text-transform: uppercase; letter-spacing: .06em; color: var(--apagado); }
+.gaveta-pe {
+  flex: none; padding: var(--esp-3) var(--esp-5);
+  border-top: 1px solid var(--linha); background: var(--sup-2);
+}
+body.com-gaveta { overflow: hidden; }
+
+/* ===================== responsivo ===================== */
+
+@media (max-width: 1120px) {
+  .palco { padding: var(--esp-5) var(--esp-5) var(--esp-7); }
+  .g4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 820px) {
+  .app { flex-direction: column; }
+
+  .topo {
+    display: flex; align-items: center; gap: var(--esp-3);
+    position: sticky; top: 0; z-index: 40;
+    background: var(--sup); border-bottom: 1px solid var(--linha);
+    padding: var(--esp-2) var(--esp-4);
+  }
+  .topo-marca { font-weight: var(--p-titulo); letter-spacing: .11em; font-size: var(--t-5); }
+  .topo-menu {
+    display: flex; align-items: center; gap: 8px;
+    font: inherit; font-size: var(--t-5); font-weight: var(--p-forte);
+    background: var(--sup-2); color: var(--tinta);
+    border: 1px solid var(--linha-forte); border-radius: var(--r);
+    padding: var(--esp-1) var(--esp-3); cursor: pointer;
+  }
+  .hamb, .hamb::before, .hamb::after {
+    display: block; width: 15px; height: 2px; background: currentColor; border-radius: var(--r-sm);
+  }
+  .hamb { position: relative; }
+  .hamb::before, .hamb::after { content: ""; position: absolute; left: 0; }
+  .hamb::before { top: -5px; } .hamb::after { top: 5px; }
+  .topo .botao-tema { margin-left: auto; }
+
+  .so-largo { display: none; }
+
+  .lateral {
+    position: fixed; top: 0; left: 0; bottom: 0; height: 100dvh;
+    transform: translateX(-102%);
+    transition: transform .22s ease;
+    box-shadow: var(--sombra-alta);
+    width: min(86vw, 300px); flex-basis: auto;
+  }
+  .lateral.aberta { transform: none; }
+
+  .veu {
+    display: block; position: fixed; inset: 0; z-index: 29;
+    background: rgba(0,0,0,.42);
+  }
+  .veu[hidden] { display: none; }
+
+  .palco { padding: var(--esp-4) var(--esp-4) var(--esp-7); }
+  .cab h1 { font-size: var(--t-2); }
+  .g2, .g3, .g4 { grid-template-columns: minmax(0, 1fr); }
+  .g-auto { grid-template-columns: minmax(0, 1fr); }
+  .cartao { padding: var(--esp-4); border-radius: var(--r); }
+  .def { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+  .def dt { margin-top: var(--esp-2); }
+  .moldura-live { height: 70vh; min-height: 380px; }
+  .num-val { font-size: var(--t-2); }
+
+  /* T10 em 390px: a gaveta ocupa quase a tela, o quadro empilha */
+  .gaveta { width: 100vw; border-left: 0; }
+  .gaveta-topo, .gaveta-corpo { padding: var(--esp-4); }
+  .gaveta-pe { padding: var(--esp-3) var(--esp-4); }
+  .gaveta-topo h2 { font-size: var(--t-3); }
+  .quadro { grid-template-columns: minmax(0, 1fr); }
+  .q-lista { max-height: none; }
+  .barra-visoes { gap: var(--esp-2); }
+  .visoes { width: 100%; }
+  .visoes .vis { flex: 1 1 0; justify-content: center; padding: var(--esp-1) var(--esp-2); }
+  .barra-filtro .campo { max-width: none; }
+}
+
+/* =========================================================================
+   T11 (EMENDA 1 · E2) — escritório em segunda janela + leitura de esforço.
+   Sem barra de acento colorida na lateral de card: a cor aqui só codifica
+   estado DENTRO da barra de proporção, que é a informação.
+   ========================================================================= */
+
+.acoes-live {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--esp-3);
+  margin: 0 0 var(--esp-4);
+}
+.acoes-live .item-meta { flex: 1 1 240px; }
+.cartao.live-fora p { margin: 0 0 var(--esp-3); color: var(--tinta-2); font-size: var(--t-4); }
+.cartao.live-fora .acoes-live { margin: 0; }
+
+/* aviso de dado parcial — nunca um zero silencioso */
+.aviso-parcial {
+  border: 1px dashed var(--linha-forte); border-radius: var(--r);
+  background: var(--sup-2); padding: var(--esp-3) var(--esp-4);
+  margin: 0 0 var(--esp-4); font-size: var(--t-5); color: var(--tinta-2);
+}
+.aviso-parcial ul { margin: var(--esp-2) 0 var(--esp-2); padding-left: 18px; }
+.aviso-parcial li { margin: var(--esp-0) 0; }
+.aviso-parcial p { margin: 0; }
+
+/* proporção do dia: 4 estados, largura por transform (nunca por width) */
+.esf-barra { display: flex; height: 10px; border-radius: var(--r-pil); overflow: hidden; background: var(--linha); min-width: 110px; }
+.esf-barra i { display: block; height: 100%; transform-origin: left center; flex: 1 1 0; transform: scaleX(var(--fr, 0)); }
+.esf-barra i.e-trab { background: var(--ok); }
+.esf-barra i.e-bloq { background: var(--ruim); }
+.esf-barra i.e-dono { background: var(--atencao); }
+.esf-barra i.e-ocio { background: var(--parado); }
+
+.esf-legenda { display: flex; flex-wrap: wrap; gap: var(--esp-2) var(--esp-4); margin: 0 0 var(--esp-4); font-size: var(--t-5); }
+.esf-legenda > span { display: flex; align-items: center; gap: 6px; }
+.esf-legenda i { width: 10px; height: 10px; border-radius: var(--r-sm); flex: none; }
+.esf-legenda i.e-trab { background: var(--ok); }
+.esf-legenda i.e-bloq { background: var(--ruim); }
+.esf-legenda i.e-dono { background: var(--atencao); }
+.esf-legenda i.e-ocio { background: var(--parado); }
+
+.esf-dia {
+  font-size: var(--t-5); text-transform: uppercase; letter-spacing: .06em;
+  color: var(--apagado); margin: var(--esp-4) 0 var(--esp-2); font-weight: var(--p-forte);
+}
+.esf-dia:first-of-type { margin-top: 0; }
+
+@media (max-width: 720px) {
+  .esf-barra { min-width: 80px; }
+  .esf-legenda { gap: var(--esp-2); }
+  .esf-legenda .item-meta { display: none; }
+}
+
+/* a tabela de esforço tem 7 colunas: sem largura mínima o nome do agente
+   vira uma coluna de uma letra. Rola na horizontal dentro do .tab-rolo. */
+.esf-tab { min-width: 900px; }
+.esf-tab th, .esf-tab td { white-space: nowrap; vertical-align: top; }
+.esf-tab td:first-child { min-width: 170px; white-space: normal; }
+.esf-tab td:nth-last-child(3) { min-width: 130px; }
+
+/* ===========================================================================
+   spec 2026-09-qg-redesenho (T3) — display options, agrupamento, chip de
+   projeto e a folha de atalhos. Sem framework, sem CDN: o criterio 7 da
+   qg-plataforma continua valendo, e este arquivo continua sendo o MESMO que a
+   nuvem serve (decisao D3 do SaaS).
+   ========================================================================= */
+
+.disp { display: flex; flex-wrap: wrap; gap: var(--esp-4); align-items: center;
+        margin: 0 0 var(--esp-3); }
+.disp-g { display: flex; align-items: center; gap: var(--esp-1); flex-wrap: wrap; }
+.disp-rot { font-size: var(--t-6); letter-spacing: .1em; text-transform: uppercase;
+            color: var(--apagado); margin-right: var(--esp-1); }
+.disp-b { font: inherit; font-size: var(--t-5); padding: var(--esp-1) var(--esp-2); cursor: pointer;
+          border: 1px solid var(--linha); border-radius: var(--r-sm);
+          background: var(--sup); color: var(--tinta-2); }
+.disp-b:hover { border-color: var(--linha-forte); color: var(--tinta); }
+.disp-b.ativo { background: var(--brass-fraco); border-color: var(--brass);
+                color: var(--brass); font-weight: var(--p-forte); }
+.disp-b:focus-visible { outline: 2px solid var(--foco); outline-offset: 2px; }
+
+/* cabecalho de grupo dentro da tabela */
+.tab .tr-g > td { padding: 0; border-bottom: 0; background: transparent; }
+.g-cab { display: flex; align-items: center; gap: var(--esp-2); width: 100%;
+         font: inherit; text-align: left; cursor: pointer; padding: var(--esp-2) var(--esp-3);
+         margin-top: var(--esp-3); border: 1px solid var(--linha);
+         border-radius: var(--r-sm); background: var(--sup-2); color: var(--tinta); }
+.g-cab:hover { border-color: var(--linha-forte); }
+.g-cab:focus-visible { outline: 2px solid var(--foco); outline-offset: 2px; }
+.g-seta { color: var(--apagado); font-size: var(--t-6); width: 10px; }
+.g-cab .item-meta { margin-left: auto; }
+/* 2a métrica no cabeçalho de grupo (progresso de tasks do Quadro) — classe
+   própria, não `.item-meta`, para não herdar o `margin-left:auto` acima e
+   empurrar as duas contagens para cantos diferentes da mesma linha. */
+.g-cab-progresso { font-size: var(--t-5); color: var(--apagado); }
+
+/* chip de projeto */
+.chip-proj { display: inline-block; font-family: var(--mono); font-size: var(--t-6);
+             letter-spacing: .03em; padding: var(--esp-0) var(--esp-2);
+             border-radius: var(--r-pil);                  /* T8.3: mesma forma da .pil */
+             background: var(--sup-3); color: var(--tinta-2);  /* T8.2: brass e so interativo */
+             border: 1px solid transparent; white-space: nowrap; }
+.chip-proj.chip-vazio { background: transparent; color: var(--apagado);
+                        border-color: var(--linha); border-style: dashed; }
+
+/* linha percorrida por J/K */
+.tab-clic tr.nav-aqui > td { background: var(--sup-3); }
+.tab-clic tr.nav-aqui > td:first-child { box-shadow: inset 2px 0 0 var(--brass); }
+
+/* folha de atalhos (tecla ?) */
+.atalhos-veu { position: fixed; inset: 0; z-index: 60; display: grid;
+               place-items: center; background: rgba(0,0,0,.45); }
+.atalhos { background: var(--sup); border: 1px solid var(--linha-forte);
+           border-radius: var(--r-lg); padding: var(--esp-5) var(--esp-6);
+           box-shadow: var(--sombra-alta); max-width: 420px; }
+.atalhos h2 { margin: 0 0 var(--esp-4); font-size: var(--t-3); }
+.atalhos dl { display: grid; grid-template-columns: auto 1fr;
+              gap: var(--esp-2) var(--esp-4); margin: 0 0 var(--esp-4); }
+.atalhos dt { white-space: nowrap; }
+.atalhos dd { margin: 0; color: var(--tinta-2); font-size: var(--t-5); }
+.atalhos kbd { font-family: var(--mono); font-size: var(--t-6); padding: var(--esp-0) var(--esp-1);
+               border: 1px solid var(--linha-forte); border-bottom-width: 2px;
+               border-radius: var(--r-sm); color: var(--tinta); }
+@media (prefers-reduced-motion: no-preference) {
+  .atalhos { animation: sobe .12s ease-out; }
+  @keyframes sobe { from { transform: translateY(6px); opacity: 0 } }
+}
+
+/* T4 · propriedades e ações da janela de detalhamento --------------------- */
+.gav-props { display: grid; grid-template-columns: minmax(90px, 128px) 1fr;
+             gap: var(--esp-2) var(--esp-4); margin: 0 0 var(--esp-5);
+             padding: 0 0 var(--esp-4); border-bottom: 1px solid var(--linha); }
+.gav-props dt { color: var(--apagado); font-size: var(--t-6); }
+.gav-props dd { margin: 0; font-size: var(--t-5); display: flex; align-items: center;
+                gap: var(--esp-2); flex-wrap: wrap; min-width: 0; }
+.gav-props dd code { overflow-wrap: anywhere; }
+.gaveta-pe { display: flex; flex-wrap: wrap; align-items: center; gap: var(--esp-3); }
+
+/* spec 2026-09-biblioteca · T4 — a Biblioteca: lista clicável, gaveta do
+   capítulo com sumário, cartões por cenário, tabela do glossário, busca.
+   Só tokens: o sensor css-sem-literal vigia esta pele como as outras. */
+.bib-topo .campo { flex: 1 1 260px; min-width: 180px; max-width: 480px; }
+.bib-lista > li.bib-item {
+  display: flex; align-items: flex-start; gap: var(--esp-3);
+  padding: var(--esp-3) var(--esp-2); margin: 0 calc(-1 * var(--esp-2));
+  cursor: pointer; border-radius: var(--r);
+  transition: background .12s ease;
+}
+.bib-lista > li.bib-item:hover, .bib-lista > li.bib-item:focus-within { background: var(--sup-2); }
+.bib-lista > li.bib-item:hover .abre { color: var(--brass); border-bottom-color: var(--brass); }
+.bib-lista > li.bib-item:active { background: var(--sup-3); }
+.bib-lista > li.bib-item.nav-aqui { background: var(--sup-3); box-shadow: inset 2px 0 0 var(--brass); }
+.bib-item-c { flex: 1 1 auto; min-width: 0; }
+.bib-item-c .item-cab .abre { font-size: var(--t-4); font-weight: var(--p-forte); }
+.bib-item-c .item-meta { margin: var(--esp-1) 0 0; }
+.bib-num {
+  font-family: var(--mono); font-size: var(--t-6); color: var(--apagado);
+  background: var(--sup-3); border: 1px solid var(--linha); border-radius: var(--r-sm);
+  padding: var(--esp-0) var(--esp-2); flex: none; margin-top: var(--esp-0);
+}
+.bib-abrir { font-size: var(--t-6); color: var(--brass); opacity: 0; flex: none; align-self: center; transition: opacity .12s ease; }
+.bib-item:hover .bib-abrir, .bib-item:focus-within .bib-abrir { opacity: 1; }
+
+/* sumário no topo da gaveta */
+.bib-sum {
+  margin: 0 0 var(--esp-5); padding: var(--esp-3) var(--esp-4);
+  background: var(--sup-2); border: 1px solid var(--linha); border-radius: var(--r);
+}
+.bib-sum-rot { margin: 0 0 var(--esp-1); font-size: var(--t-6); color: var(--apagado); text-transform: uppercase; letter-spacing: .06em; }
+.bib-sum ol { margin: 0; padding: 0; list-style: none; }
+.bib-sum li { font-size: var(--t-5); line-height: 1.6; }
+.bib-sum li.n3 { padding-left: var(--esp-4); color: var(--tinta-2); }
+.bib-sum a, .ln-int { color: var(--brass); text-decoration: none; border-bottom: 1px solid transparent; }
+.bib-sum a:hover, .ln-int:hover { border-bottom-color: var(--brass); }
+.bib-sum a:focus-visible, .ln-int:focus-visible { outline: 2px solid var(--foco); outline-offset: 2px; border-radius: var(--r-sm); }
+.bib-corpo h3, .bib-corpo h4 { scroll-margin-top: var(--esp-4); }
+/* tabela GFM renderizada pelo md(): a pele de `tabelaOrd`, com respiro de parágrafo */
+.md-tab { margin: var(--esp-3) 0 var(--esp-4); }
+.md-tab td, .md-tab th { padding-right: var(--esp-4); }
+.bib-corpo .bib-alvo { box-shadow: inset 3px 0 0 var(--brass); padding-left: var(--esp-3); margin-left: calc(-1 * var(--esp-3)); }
+
+/* resultados da busca: capítulo → trechos por seção */
+.bib-hits .item-cab { display: flex; align-items: center; gap: var(--esp-2); flex-wrap: wrap; }
+.bib-hits .item-cab .abre { font-weight: var(--p-forte); }
+.bib-trechos { list-style: none; margin: var(--esp-2) 0 0; padding: 0; display: grid; gap: var(--esp-1); }
+.bib-hit {
+  font: inherit; text-align: left; width: 100%; cursor: pointer;
+  display: grid; gap: var(--esp-0);
+  padding: var(--esp-2) var(--esp-3); border-radius: var(--r-sm);
+  background: var(--sup-2); border: 1px solid var(--linha); color: var(--tinta);
+  transition: border-color .12s ease, background .12s ease;
+}
+.bib-hit:hover { border-color: var(--brass); background: var(--sup); }
+.bib-hit:active { background: var(--sup-3); }
+.bib-hit:focus-visible { outline: 2px solid var(--foco); outline-offset: 2px; }
+.bib-hit-sec { font-size: var(--t-6); color: var(--brass); font-weight: var(--p-forte); }
+.bib-hit-tx { font-size: var(--t-5); color: var(--tinta-2); line-height: 1.45; }
+
+/* cartões "estou em…" */
+.bib-cen-t { font-size: var(--t-4); margin: 0 0 var(--esp-3); display: flex; flex-direction: column; gap: var(--esp-0); }
+.bib-cen-rot { font-size: var(--t-6); color: var(--apagado); text-transform: uppercase; letter-spacing: .06em; font-weight: var(--p-normal); }
+.bib-cen-l { display: grid; gap: var(--esp-2); }
+.bib-glos-cab { margin: 0 0 var(--esp-3); }
+.bib-erro p { overflow-wrap: anywhere; }
+.glos-analogia { color: var(--brass); font-style: italic; }
+.gaveta-acoes { display: flex; gap: var(--esp-2); flex-wrap: wrap; }
+.gav-b { font: inherit; font-size: var(--t-5); padding: var(--esp-1) var(--esp-3); cursor: pointer;
+         border: 1px solid var(--linha-forte); border-radius: var(--r-sm);
+         background: var(--sup); color: var(--tinta-2); }
+.gav-b:hover { color: var(--tinta); border-color: var(--brass); }
+.gav-b:focus-visible { outline: 2px solid var(--foco); outline-offset: 2px; }
+.gav-b.gav-ok { color: var(--ok); border-color: var(--ok); }
+.gav-b.gav-erro { color: var(--ruim); border-color: var(--ruim); }
+
+/* T5 · iniciativas em linha — o que era paredão de prosa no Início --------- */
+.ini-lista { display: flex; flex-direction: column; gap: var(--esp-2); }
+.ini-l { display: flex; align-items: center; gap: var(--esp-3); width: 100%;
+         font: inherit; text-align: left; cursor: pointer;
+         padding: var(--esp-3) var(--esp-4); border: 1px solid var(--linha);
+         border-radius: var(--r); background: var(--sup-2); color: var(--tinta); }
+.ini-l:hover { border-color: var(--linha-forte); background: var(--sup-3); }
+.ini-l:focus-visible { outline: 2px solid var(--foco); outline-offset: 2px; }
+.ini-t { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ini-n { font-weight: var(--p-forte); font-size: var(--t-4); }
+.ini-m { font-family: var(--mono); font-size: var(--t-6); color: var(--apagado);
+         overflow-wrap: anywhere; }
+.ini-abrir { margin-left: auto; color: var(--apagado); font-size: var(--t-6);
+             opacity: 0; transition: opacity .12s ease; white-space: nowrap; }
+/* (a regra de hover do .ini-abrir vive junto das irmãs, mais abaixo) */
+@media (prefers-reduced-motion: reduce) { .ini-abrir { transition: none; opacity: 1; } }
+
+/* T6 · retrato do agente — as peças do escritório ao vivo, reusadas -------- */
+.ag-retrato { display: inline-grid; place-items: center; flex: 0 0 auto;
+              border-radius: var(--r-lg); overflow: hidden;
+              background: color-mix(in srgb, var(--cor-ag) 14%, transparent);
+              border: 1px solid color-mix(in srgb, var(--cor-ag) 45%, transparent); }
+.ag-retrato svg { width: 100%; height: 100%; display: block;
+                  --skin: #F6C9A3; --hair: #2B2118; --ink: var(--tinta);
+                  --agent: var(--cor-ag); --danger: var(--ruim);
+                  --surface: var(--sup); }
+html[data-tema="escuro"] .ag-retrato svg { --skin: #E8B98F; }
+.ag-retrato.sem-arte { border-style: dashed; background: var(--sup-2); }
+.ag-retrato-emoji { font-size: var(--t-2); line-height: 1; }
+.ag-semarte { display: block; font-family: var(--mono); font-size: var(--t-6);
+              letter-spacing: .06em; color: var(--apagado); margin-top: var(--esp-1); }
+
+/* R6b · a folha de atalhos é um diálogo de verdade: tem botão de fechar */
+.atalhos { position: relative; }
+.atalhos-x { position: absolute; top: 10px; right: 10px; width: 30px; height: 30px;
+             display: grid; place-items: center; cursor: pointer; font: inherit;
+             border: 1px solid var(--linha); border-radius: var(--r-sm);
+             background: var(--sup-2); color: var(--tinta-2); }
+.atalhos-x:hover { color: var(--tinta); border-color: var(--linha-forte); }
+.atalhos-x:focus-visible { outline: 2px solid var(--foco); outline-offset: 2px; }
+/* R5 · sprite que não chegou é diferente de agente sem arte */
+.ag-retrato.sprite-falhou { border-color: var(--atencao); border-style: dashed; }
+
+/* spec 2026-09-qg-tres-perguntas (T1.4) — a linha que responde "o que espera
+   por mim". O vazio é resposta: fica discreto, mas fica. */
+.fila-espera { margin: 0 0 var(--esp-2); font-size: var(--t-4); color: var(--tinta); }
+.fila-espera.vazio { color: var(--apagado); }
+.fila-espera.conflito { color: var(--ruim); }
+
+/* T2 · o aviso de divergência entre o arquivo e o navegador. Discreto, mas
+   presente: escolha silenciosa é o defeito que esta spec existe para matar. */
+.aviso-prefs { margin: 0 0 var(--esp-3); padding: var(--esp-2) var(--esp-3);
+               border-left: 2px solid var(--atencao); background: var(--atencao-fraco);
+               color: var(--tinta-2); font-size: var(--t-5); border-radius: var(--r-sm); }
+.aviso-prefs code { font-family: var(--mono); font-size: var(--t-6); }
+
+/* T3.3 · o cartão pesa conforme a urgência. Antes eram todos iguais — e o
+   rótulo ("OLHAR", 800, caixa alta) gritava mais que a frase que importa.
+   Agora o conteúdo ganha peso e o rótulo devolve o dele. */
+.espera-verbo { font-weight: var(--p-titulo); color: var(--apagado); }
+.espera-txt { font-weight: var(--p-forte); }
+.espera-txt small { font-weight: var(--p-normal); }
+
+/* u0 = trava o trabalho · u1 = precisa de você, não trava · u2 = medição */
+.espera-item.u0 { border-color: color-mix(in srgb, var(--atencao) 55%, var(--linha)); }
+.espera-item.u0 .espera-verbo { color: var(--atencao); }
+.espera-item.u1 { background: var(--sup-2); border-color: var(--linha); }
+.espera-item.u2 { background: var(--sup); border-color: var(--linha); }
+.espera-item.u2 .espera-txt { font-weight: var(--p-normal); }
+/* medição anterior à última mudança do escritório: o cartão diz que envelheceu */
+.espera-item.velho { border-style: dashed; opacity: .92; }
+.espera-item.velho .espera-txt small { color: var(--atencao); }
+
+/* T5 · "Em curso" vazio é resposta, e as concluídas ficam visíveis mas discretas */
+.vazio-curso { margin: 0 0 var(--esp-3); color: var(--tinta-2); font-size: var(--t-4); }
+.vazio-curso strong { color: var(--tinta); }
+.ini-fechadas { margin: var(--esp-3) 0 0; font-size: var(--t-5); color: var(--apagado); }
+.ini-fechada-lista .ini-l { background: transparent; border-style: dashed; }
+.ini-fechada-lista .ini-n { font-weight: var(--p-normal); color: var(--tinta-2); }
+
+/* T6 · o chip de contagem virou filtro de verdade (o estranho tentou clicar) */
+.pil-b { font: inherit; cursor: pointer; border: 1px solid transparent; }
+.pil-b:hover { border-color: var(--linha-forte); }
+.pil-b:focus-visible { outline: 2px solid var(--foco); outline-offset: 2px; }
+.pil-b.ativo { box-shadow: inset 0 0 0 1px currentColor; font-weight: var(--p-forte); }
+.pil-b.limpar { background: transparent; color: var(--apagado);
+                border-color: var(--linha-forte); }
+/* T6.5 · a linha que diz o que a tela é */
+.o-que-e { margin: 0 0 var(--esp-3); font-size: var(--t-5); color: var(--tinta-2);
+           max-width: 78ch; line-height: 1.5; }
+.o-que-e strong { color: var(--tinta); font-weight: var(--p-forte); }
+.fila-contagem { margin: 0 0 var(--esp-3); color: var(--tinta-2); font-size: var(--t-5); }
+
+/* T7 · glossário: o termo é botão (o tooltip não existe no toque) */
+.jarg { font: inherit; background: none; border: 0; padding: 0; cursor: help;
+        color: inherit; border-bottom: 1px dotted var(--linha-forte); }
+.jarg:hover { border-bottom-color: var(--brass); color: var(--brass); }
+.jarg:focus-visible { outline: 2px solid var(--foco); outline-offset: 2px; }
+.atalhos.glos { max-width: 640px; max-height: 78vh; overflow: auto; }
+.atalhos.glos h3 { margin: var(--esp-5) 0 var(--esp-2); font-size: var(--t-6);
+                   letter-spacing: .14em; text-transform: uppercase; color: var(--apagado); }
+.atalhos.glos dl { grid-template-columns: minmax(120px, 190px) 1fr; }
+.atalhos.glos dt { font-weight: var(--p-forte); color: var(--tinta); white-space: normal; }
+.atalhos.glos dt.destaque { color: var(--brass); }
+.glos-en { font-family: var(--mono); font-size: var(--t-6); color: var(--apagado); font-weight: var(--p-normal); }
+.raiz-cam { display: block; margin-top: var(--esp-1); color: var(--apagado); }
+
+/* T11 · o aviso de que o escritório mudou. Avisa, nunca recarrega sozinho. */
+.aviso-mudanca { position: fixed; left: 50%; bottom: var(--esp-5); z-index: 55;
+                 transform: translateX(-50%); display: flex; align-items: center;
+                 gap: var(--esp-3); padding: var(--esp-3) var(--esp-4);
+                 border: 1px solid var(--brass); border-radius: var(--r);
+                 background: var(--sup); box-shadow: var(--sombra-alta);
+                 font-size: var(--t-5); max-width: min(92vw, 640px); }
+.aviso-mudanca code { font-family: var(--mono); font-size: var(--t-6); color: var(--brass); }
+.aviso-mudanca.frio { border-color: var(--linha-forte); color: var(--apagado); }
+@media (prefers-reduced-motion: no-preference) {
+  .aviso-mudanca { animation: sobe .16s ease-out; }
+}
+
+
+/* ===========================================================================
+   T8 · a pele com sistema. Três regras que valem para a tela inteira:
+   1. nenhum tamanho/peso/espaço/raio literal — só token (sensor no CI);
+   2. `--brass` significa UMA coisa: interativo ou ativo. Situação usa a
+      paleta de estado; número neutro não usa cor nenhuma;
+   3. uma forma por papel — metadado categórico é sempre pill.
+   ========================================================================= */
+
+/* T8.4 · todo controle tem a mesma altura. Antes: 32, 28 e 27px em três
+   barras empilhadas — três réguas onde devia haver uma. */
+.btn, .disp-b, .gav-b, .visoes .vis, .atalhos-x {
+  font-size: var(--t-5);
+  padding: var(--esp-2) var(--esp-3);
+  border-radius: var(--r-sm);
+  line-height: 1.35;
+}
+
+/* T8.5 · nada essencial vive só no hover — some no toque e na captura.
+   O "abrir →" fica sempre visível, só mais discreto em repouso.
+
+   O reviewer do risco N7 (2026-09-06) mostrou que este conserto tinha sido
+   aplicado a UM dos três lugares com o mesmo padrão. `.mini-abrir` e
+   `.ag-abrir` continuavam nascendo em `opacity: 0` — e cobrem MAIS telas que
+   a corrigida: os cartões e o quadro de Decisões, Radar, Leis, Fila e Agentes.
+   No toque, o único texto que dizia "isto abre algo" nunca aparecia. */
+.ini-abrir, .mini-abrir, .ag-abrir { opacity: .55; }
+.ini-l:hover .ini-abrir, .ini-l:focus-visible .ini-abrir,
+.mini:hover .mini-abrir, .mini:focus-visible .mini-abrir,
+.ag-cartao:hover .ag-abrir, .ag-cartao:focus-visible .ag-abrir { opacity: 1; }
+
+/* Sem hover NENHUM (toque), o discreto não ajuda: fica sempre em cheio. */
+@media (hover: none) {
+  .ini-abrir, .mini-abrir, .ag-abrir { opacity: 1; }
+}
+
+/* T8.2 · número neutro deixa de ser semáforo. "6 agentes contratados" em
+   âmbar lia como alerta — o estranho e a cadeira de UI pegaram os dois. */
+.num-val.neutro { color: var(--tinta); }
+
+/* ===========================================================================
+   A BARRA ÚNICA (pedido do dono, 2026-09-06: "cabeçalho muito carregado…
+   gosto de espaço, uma única linha de menus").
+   Eram SETE faixas empilhadas e 462px até a primeira linha de dado.
+   O que era faixa virou menu: só ocupa espaço quando aberto.
+   ========================================================================= */
+.barra-um { display: flex; align-items: center; gap: var(--esp-2);
+            margin: 0 0 var(--esp-3); flex-wrap: wrap; }
+.barra-um .campo { flex: 1 1 260px; min-width: 180px; }
+.barra-conta { margin-left: auto; white-space: nowrap; }
+
+.menu-x { position: relative; }
+.menu-x > summary { list-style: none; cursor: pointer; display: inline-flex;
+                    align-items: center; gap: var(--esp-2); white-space: nowrap; }
+.menu-x > summary::-webkit-details-marker { display: none; }
+.menu-x[open] > summary { border-color: var(--brass); color: var(--brass); }
+.menu-resumo { color: var(--apagado); font-weight: var(--p-normal); }
+.menu-x[open] .menu-resumo { color: inherit; }
+.menu-seta { font-size: var(--t-6); color: var(--apagado); }
+.menu-corpo { position: absolute; z-index: 40; top: calc(100% + var(--esp-1)); left: 0;
+              min-width: 260px; padding: var(--esp-3); border: 1px solid var(--linha-forte);
+              border-radius: var(--r); background: var(--sup); box-shadow: var(--sombra-alta);
+              display: grid; gap: var(--esp-3); }
+.menu-g { display: flex; flex-wrap: wrap; align-items: center; gap: var(--esp-1); }
+/* Facetas de cardinalidade alta (Épico do Quadro de tarefas: dezenas de
+   valores) — teto de altura + rolagem PRÓPRIA, para a lista nunca esticar
+   o menu além da tela nem arrastar o resto do layout junto. */
+.menu-g-lista { max-height: 44vh; overflow-y: auto; align-content: flex-start;
+                padding-right: 2px; }
+.menu-g-lista .disp-b { display: flex; flex: 1 1 100%; justify-content: space-between;
+                         align-items: center; gap: var(--esp-2); text-align: left; }
+.menu-x[data-menu="quadro-epico"] .menu-corpo { min-width: min(360px, 90vw); }
+.menu-rot { flex: 1 0 100%; font-size: var(--t-6); letter-spacing: .1em;
+            text-transform: uppercase; color: var(--apagado); }
+.menu-x:last-of-type .menu-corpo { left: auto; right: 0; }
+@media (max-width: 720px) {
+  .menu-corpo { left: 0; right: 0; min-width: 0; }
+}
+
+/* Abas + controles na MESMA linha (pedido do dono, 2026-09-06) */
+.linha-aba { display: flex; align-items: center; gap: var(--esp-3);
+             flex-wrap: wrap; margin: 0 0 var(--esp-4); }
+.linha-aba .abas { margin: 0; flex: 0 0 auto; }
+.linha-aba .barra-um { margin: 0; flex: 1 1 380px; min-width: 280px; }
+/* Com um resumo de chips na mesma faixa (Leis), 280px de busca não deixam a
+   linha fechar por 24px. Aí ela pode ir a 200 — ainda cabem ~28 caracteres. */
+.linha-aba .resumo-faixa ~ .barra-um { flex: 1 1 200px; min-width: 200px; }
+/* Dentro da faixa, a barra de visões perde a margem que tinha como faixa
+   autônoma — senão a linha fica 16px mais alta por espaço morto. */
+.linha-aba .barra-visoes { margin: 0; flex: 0 0 auto; }
+
+/* Resumo que vive DENTRO da faixa de controles (Radar, Leis): eram <p> em
+   faixa própria acima das visões — uma linha inteira gasta com 4 chips.
+   `margin-right:auto` empurra as visões para a direita, como no Trabalho. */
+.resumo-faixa { display: flex; align-items: center; gap: var(--esp-2); flex-wrap: wrap;
+                margin-right: auto; flex: 1 1 auto; min-width: 0; }
+
+/* ===========================================================================
+   Histórico & busca (spec 2026-09-saas-e6-historico, T6)
+   Nada aqui inventa cor nova: tudo sai dos tokens, e por isso as duas ondas
+   de tema (claro e escuro) valem sem uma segunda regra.
+   =========================================================================== */
+
+/* O trecho devolvido pela busca — o servidor recorta 240 caracteres em volta
+   da ocorrência, e quebra de linha DENTRO do trecho é informação (o arquivo
+   é markdown). Por isso `pre-wrap`, e por isso ele rola dentro de si. */
+.trecho { margin: 0; padding: var(--esp-3); border-radius: var(--r-sm);
+          background: var(--sup-3); border: 1px solid var(--linha);
+          font-family: var(--mono); font-size: var(--t-5); line-height: 1.55;
+          white-space: pre-wrap; word-break: break-word; max-height: 40vh; overflow: auto; }
+
+/* A ocorrência dentro do trecho. `mark` do navegador é amarelo fixo e some no
+   tema escuro — aqui ele é o mesmo latão do resto da casa. */
+mark { background: var(--brass-fraco); color: var(--brass);
+       border-radius: var(--r-sm); padding: 0 var(--esp-0); font-weight: var(--p-forte); }
+
+/* Trecho DENTRO da célula da tabela: uma linha só, nunca esticando a coluna. */
+.cel-trecho { display: block; max-width: 46ch; overflow: hidden;
+              text-overflow: ellipsis; white-space: nowrap;
+              font-family: var(--mono); font-size: var(--t-6); color: var(--tinta-2); }
+.cod-curto { font-family: var(--mono); font-size: var(--t-6); color: var(--tinta-2); }
+
+/* Os chips de filtro por agente e por tipo. Faixa própria porque são DOIS
+   grupos (agente, tipo) e misturá-los na barra-um esconderia qual é qual. */
+.chips-f { display: flex; align-items: center; flex-wrap: wrap; gap: var(--esp-1);
+           margin: 0 0 var(--esp-3); }
+.chips-f .menu-rot { flex: 0 0 auto; margin-right: var(--esp-1); }
+
+/* O aviso de LIMITE — não é erro e não é vazio: é a tela dizendo o que ela
+   sabe que não consegue. Tom de atenção, nunca de falha. */
+.aviso-limite { margin: var(--esp-2) 0 var(--esp-3); padding: var(--esp-2) var(--esp-3);
+                border-radius: var(--r-sm); border: 1px solid var(--atencao);
+                background: var(--atencao-fraco); color: var(--tinta);
+                font-size: var(--t-5); line-height: 1.5; max-width: 78ch; }
+.aviso-limite code { font-family: var(--mono); font-size: var(--t-6); }

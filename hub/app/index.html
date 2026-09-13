@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="pt-BR" data-tema="claro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ARVYS — QG</title>
+<link rel="icon" href="/favicon.svg">
+<link rel="stylesheet" href="/app/app.css">
+<script>
+  // Tema ANTES da primeira pintura: sem isto a 2a visita pisca claro antes de virar escuro.
+  // localStorage sempre em try/catch (aba anonima / site data bloqueado lanca).
+  (function () {
+    var t = null;
+    try { t = localStorage.getItem('arvys.tema'); } catch (e) { t = null; }
+    if (t !== 'claro' && t !== 'escuro') {
+      t = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'escuro' : 'claro';
+    }
+    document.documentElement.setAttribute('data-tema', t);
+  })();
+</script>
+</head>
+<body>
+
+<a class="pular" href="#conteudo">Pular para o conteúdo</a>
+
+<div class="app">
+
+  <!-- ---------- barra do topo (so aparece em tela estreita) ---------- -->
+  <header class="topo">
+    <button type="button" class="topo-menu" id="btn-menu" aria-expanded="false" aria-controls="lateral">
+      <span class="hamb" aria-hidden="true"></span> Menu
+    </button>
+    <span class="topo-marca">ARVYS</span>
+    <button type="button" class="botao-tema" id="btn-tema-topo" title="Alternar tema claro/escuro">
+      <span class="ico-tema" aria-hidden="true"></span><span class="sr">Alternar tema</span>
+    </button>
+  </header>
+
+  <!-- ---------- sidebar ---------- -->
+  <nav class="lateral" id="lateral" aria-label="Seções do QG">
+    <div class="marca">
+      <span class="marca-logo" aria-hidden="true">A</span>
+      <span class="marca-txt">
+        <strong>ARVYS</strong>
+        <small>quartel-general</small>
+      </span>
+      <button type="button" class="botao-tema so-largo" id="btn-tema" title="Alternar tema claro/escuro">
+        <span class="ico-tema" aria-hidden="true"></span><span class="sr">Alternar tema</span>
+      </button>
+    </div>
+
+    <ul class="menu" id="menu"><!-- montado pelo app.js --></ul>
+
+    <div class="lateral-rodape">
+      <div class="cota-mini" id="cota-mini">
+        <div class="cota-mini-topo"><span>Cota da semana</span><span id="cota-mini-pct" title="quanto da franquia semanal de IA já foi gasta">—</span></div>
+        <div class="barra"><i id="cota-mini-barra" style="--fr:0"></i></div>
+        <p class="cota-mini-nota" id="cota-mini-nota">carregando…</p>
+      </div>
+      <p class="raiz" id="raiz">Este escritório vive nos seus arquivos.</p>
+    </div>
+  </nav>
+
+  <div class="veu" id="veu" hidden></div>
+
+  <!-- ---------- conteudo ---------- -->
+  <main class="conteudo" id="conteudo" tabindex="-1">
+    <div id="palco" class="palco">
+      <div class="carregando" role="status">
+        <span class="spin" aria-hidden="true"></span>
+        <p>Lendo o escritório…</p>
+      </div>
+    </div>
+  </main>
+
+</div>
+
+<!-- ---------- janela de detalhamento (drawer) — T10 / E1 padrao 2 ----------
+     Fica fora de .app para nao herdar transform/overflow da coluna de conteudo.
+     O foco e preso aqui enquanto aberta e devolvido ao item de origem ao fechar. -->
+<div class="gaveta-veu" id="gaveta-veu" hidden></div>
+<aside class="gaveta" id="gaveta" role="dialog" aria-modal="true" aria-labelledby="gaveta-titulo" hidden>
+  <header class="gaveta-topo">
+    <div class="gaveta-cab">
+      <p class="gaveta-tipo" id="gaveta-tipo"></p>
+      <h2 id="gaveta-titulo"></h2>
+      <p class="gaveta-sub" id="gaveta-sub"></p>
+    </div>
+    <button type="button" class="gaveta-x" id="gaveta-x" title="Fechar (Esc)">
+      <span aria-hidden="true">✕</span><span class="sr">Fechar o detalhamento</span>
+    </button>
+  </header>
+  <div class="gaveta-corpo" id="gaveta-corpo"></div>
+  <footer class="gaveta-pe">
+    <!-- T4 (spec 2026-09-qg-redesenho): as ações do registro aberto -->
+    <div class="gaveta-acoes" id="gaveta-acoes"></div>
+    <span class="item-meta">Esc fecha · ↑ ↓ percorre o grupo · o foco volta para o item da lista</span>
+  </footer>
+</aside>
+
+<noscript>
+  <div class="sem-js">
+    <h1>O QG precisa de JavaScript</h1>
+    <p>Esta página monta as seções no navegador a partir de <code>/api/qg</code>. Nada sai da sua
+       máquina — mas com o JavaScript desligado não há o que montar.</p>
+    <p>O relatório antigo, em HTML puro, continua em <a href="/legacy">/legacy</a>.</p>
+  </div>
+</noscript>
+
+<script src="/app/app.js"></script>
+</body>
+</html>

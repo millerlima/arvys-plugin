@@ -1,0 +1,23 @@
+# Escritório de cada adotante — nasce local, nunca versionado no template
+# (ancorado na RAIZ com "/" — sem isso "agents/" também casava
+# plugin/agents/, os 2 subagentes do próprio plugin, achado 2026-09-13)
+/company/
+/agents/
+/specs/
+/incidents/
+/evals/
+/OWNER.md
+/CLAUDE.md
+
+# gerado / telemetria do painel
+hub/index.html
+hub/live/events.jsonl
+hub/live/agents.json
+hub/live/noite.log
+hub/live/briefings/
+hub/live/radar/
+hub/live/session.json
+hub/live/meus-pids.txt
+
+node_modules/
+.DS_Store
