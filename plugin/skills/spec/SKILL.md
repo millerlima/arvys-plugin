@@ -9,6 +9,16 @@ Spec não é burocracia: é o arquivo que a sessão de amanhã relê por centena
 tokens em vez de redescobrir por dezenas de milhares. **Token caro planeja aqui;
 token barato digita depois.**
 
+**1ª vez que ESTE dono aciona `/arvys:spec` (confira `Lições vistas:` em
+`OWNER.md` — se a linha não existir ou não tiver `spec`, é a 1ª vez):** ANTES
+de começar a escrever qualquer arquivo (nunca dentro do gate do passo 2, que
+tem de ficar isolado — mesa `2026-09-13-mesa-ensinar-aos-poucos.md`, condição
+1), uma frase `[1ª vez aqui]` na língua do Perfil — algo como *"isto separa o
+QUÊ do COMO: você só aprova o plano, mais à frente nesta tela; nenhum código
+começa antes do seu sim"*. Depois, apense/atualize `Lições vistas:` em
+`OWNER.md` com `spec` — **1 linha só, nunca reescreva o arquivo** (condição
+3 da mesma mesa).
+
 ## Passos
 
 1. Crie `specs/YYYY-MM-<slug>/` com:
@@ -98,3 +108,5 @@ O dono acompanha o ritual pela tela — ela é parte da entrega, não sobra.
   que o QUÊ já é conhecido.
 - Spec aprovada muda? Atualizar spec.md ANTES de mudar o código.
 - A pasta da spec é permanente: é memória de por que o sistema é como é.
+- `Lições vistas` (abertura do ritual) é **só onboarding** — nunca carrega
+  aviso de segurança nem substitui hook algum (mesa 2026-09-13, condição 4).

@@ -108,7 +108,17 @@ existe; criar estado aqui é fabricar história que ninguém viveu.
 4. **Propague o L1:** atualize a linha do agente na tabela de
    `company/STATE.md` (+ blockers se houver).
 5. Responda ao dono com: L1 novo · decisões logadas (títulos) · próximo passo
-   sugerido para a próxima sessão.
+   sugerido para a próxima sessão. **1ª vez que ESTE dono roda `/arvys:close`
+   (confira `Lições vistas:` em `OWNER.md` — se a linha não existir ou não
+   tiver `close`, é a 1ª vez):** acrescente, na língua do Perfil dele, uma
+   frase `[1ª vez aqui]` dizendo o porquê — algo como *"isto grava o que
+   aconteceu em arquivo — decisão, gotcha, estado — para a próxima sessão
+   abrir já sabendo, sem você repetir nada; por isso limpar o chat depois é
+   sempre seguro"*. Depois disso, apense/atualize a linha `Lições vistas:`
+   em `OWNER.md` com `close` — **1 linha só, nunca reescreva o arquivo
+   inteiro** (mesa `2026-09-13-mesa-ensinar-aos-poucos.md`, condição 3). A
+   frase nunca entra dentro do bloco de push/checklist (passos 8-9) nem
+   compete com eles — só aqui, no resumo ao dono.
 6. **Apague a mesa no QG ao vivo — SÓ SE HOUVER QG.** Sem `hub/live/`, pule em
    silêncio (o QG é da instância Arvys, não do núcleo). Havendo: remova
    `hub/live/session.json` (senão a
@@ -179,3 +189,5 @@ O dono acompanha o ritual pela tela — ela é parte da entrega, não sobra.
 
 - Não commitar nem pushar nada — escrita em git é ato explícito à parte.
 - Se a sessão não mudou nada de estado, diga isso e atualize apenas a data do L1.
+- `Lições vistas` (passo 5) é **só onboarding** — nunca carrega aviso de
+  segurança nem substitui hook algum (mesa 2026-09-13, condição 4).
